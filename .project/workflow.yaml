@@ -1,3 +1,7 @@
+git:
+  # Rama a la que apunta el PR de cada tarea de código (p. ej. main o develop).
+  baseBranch: main
+
 jira:
   site: stph4211.atlassian.net
   cloudId: adfec905-d898-4dc7-8c90-6d53f6a795c7
