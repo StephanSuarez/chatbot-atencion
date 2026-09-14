@@ -29,5 +29,4 @@ export function decryptApiKey(stored: string, masterKey: Buffer): string | null 
 
 export const lastFour = (apiKey: string) => apiKey.slice(-4);
 
-// Lo único que se muestra de una key guardada (FR-007).
 export const maskApiKey = (last4: string) => `…${last4}`;
