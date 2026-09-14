@@ -1,0 +1,15 @@
+# ponytail: misma versión mayor que Supabase (Postgres 17, verificado 2026-09-14).
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: chatbot
+      POSTGRES_PASSWORD: chatbot
+      POSTGRES_DB: chatbot
+    ports:
+      - "5432:5432"
+    volumes:
+      - db:/var/lib/postgresql/data
+
+volumes:
+  db:

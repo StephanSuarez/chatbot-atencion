@@ -1,0 +1,33 @@
+jira:
+  site: stph4211.atlassian.net
+  cloudId: adfec905-d898-4dc7-8c90-6d53f6a795c7
+  projectKey: KAN
+
+  # Convención aprobada 2026-09-14: toda tarea con UI (front) lleva subtareas de diseño.
+  conventions:
+    frontendTasksRequireDesignSubtasks: true
+
+  workflow:
+    discovered: true
+    discoveredAt: "2026-09-14"
+    # Proyecto team-managed. Transiciones verificadas en KAN-2 (2026-09-14):
+    # desde To Do se puede ir a cualquier estado. IDs de transición:
+    transitions:
+      todo: "11"
+      in_progress: "21"
+      review: "31"
+      done: "41"
+    statuses:
+      todo:
+        id: "10009"
+        name: "To Do"
+      in_progress:
+        id: "10010"
+        name: "In Progress"
+      review:
+        id: "10011"
+        name: "In Review"
+      done:
+        id: "10012"
+        name: "Done"
+    # No existen en KAN: qa, product_validation, ready_to_deploy, blocked.
