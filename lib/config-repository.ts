@@ -10,7 +10,6 @@ export async function readConfig(): Promise<ConfigRow | null> {
   return row ?? null;
 }
 
-// Crea la fila en el primer guardado y la reemplaza en los siguientes, en una sola operación.
 // Si dos personas guardan a la vez, gana la última (FR-012).
 export async function saveConfig(values: ConfigValues): Promise<ConfigRow> {
   const row = { ...values, updatedAt: new Date() };
