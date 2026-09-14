@@ -76,8 +76,8 @@ export async function getConfig(): Promise<PublicConfig> {
 function providerErrors(error: unknown, providerName: string): FieldErrors {
   if (!(error instanceof ProviderError)) throw error;
   return error.kind === "invalid_key"
-    ? { apiKey: `${providerName} rechazó la API key. Revisa que sea correcta y de ${providerName}.` }
-    : { form: `No se pudo verificar con ${providerName}. Reintenta en unos segundos.` };
+    ? { apiKey: `${providerName} rechazó esta key. Revisa que la copiaste completa y que es de tu cuenta.` }
+    : { form: `No pudimos contactar a ${providerName}. No es tu key: intenta de nuevo en unos segundos.` };
 }
 
 // "Cargar modelos": con una key nueva la verifica; sin key usa la guardada si es del mismo proveedor (plan §3).
@@ -103,9 +103,9 @@ export async function saveConfig(input: ConfigInput): Promise<SaveResult> {
   const row = await readConfig();
   const errors: FieldErrors = {};
 
-  if (!companyName) errors.companyName = "El nombre de la empresa es obligatorio.";
-  if (!prompt.trim()) errors.prompt = "El prompt no puede estar vacío. Puedes restaurar el prompt por defecto.";
-  else if (prompt.length > MAX_PROMPT) errors.prompt = `El prompt supera el máximo de ${MAX_PROMPT} caracteres.`;
+  if (!companyName) errors.companyName = "Escribe el nombre de tu empresa.";
+  if (!prompt.trim()) errors.prompt = "Escribe cómo debe hablar o vuelve al texto original.";
+  else if (prompt.length > MAX_PROMPT) errors.prompt = `Supera el máximo por ${prompt.length - MAX_PROMPT} caracteres.`;
 
   const provider = input.provider ? getProvider(input.provider) : undefined;
   if (input.provider && !provider) errors.provider = "Elige un proveedor de la lista.";
