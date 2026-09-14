@@ -51,7 +51,6 @@ export function ConfigForm({ initial, providers, rules, defaultPrompt, maxPrompt
     model !== (saved.model ?? "") ||
     apiKey !== "";
 
-  // FR-016: aviso del navegador al salir con cambios sin guardar.
   useEffect(() => {
     if (!dirty) return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
@@ -206,7 +205,7 @@ export function ConfigForm({ initial, providers, rules, defaultPrompt, maxPrompt
             <div className={s.tiles}>
               {providers.map((p) => (
                 <label key={p.id} className={provider === p.id ? `${s.tile} ${s.tileOn}` : s.tile}>
-                  <input type="radio" name="provider" value={p.id} checked={provider === p.id} onChange={() => chooseProvider(p.id)} />
+                  <input type="radio" name="provider" value={p.id} checked={provider === p.id} disabled={loadingModels} onChange={() => chooseProvider(p.id)} />
                   {p.name}
                 </label>
               ))}
