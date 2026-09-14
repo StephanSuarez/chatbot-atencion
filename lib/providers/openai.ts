@@ -14,7 +14,7 @@ export const openai: Provider = {
     await getJson("openai", MODELS_URL, apiKey);
   },
   async listChatModels(apiKey) {
-    const models = modelsFrom("openai",await getJson("openai", MODELS_URL, apiKey));
+    const models = modelsFrom("openai", await getJson("openai", MODELS_URL, apiKey));
     return models
       .map((m) => m.id as string)
       .filter((id) => !NOT_CHAT.test(id))

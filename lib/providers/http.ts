@@ -1,5 +1,3 @@
-// Llamadas a los proveedores de LLM y traducción de sus errores (plan §6).
-
 export type ProviderErrorKind = "invalid_key" | "unavailable";
 
 export class ProviderError extends Error {
@@ -13,7 +11,6 @@ export class ProviderError extends Error {
 
 const TIMEOUT_MS = 10_000;
 
-// 401 → key inválida. Red, timeout, 5xx o cualquier otra respuesta → no se pudo verificar.
 export async function getJson(provider: string, url: string, apiKey?: string): Promise<unknown> {
   let res: Response;
   try {
