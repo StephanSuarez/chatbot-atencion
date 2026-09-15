@@ -1,7 +1,8 @@
-# ponytail: misma versión mayor que Supabase (Postgres 17, verificado 2026-09-14).
+# ponytail: misma versión mayor que Supabase (Postgres 17, verificado 2026-09-14), con pgvector (002).
 services:
   db:
-    image: postgres:17
+    # trixie: misma glibc que postgres:17; con bookworm el volumen existente avisa de collation distinta.
+    image: pgvector/pgvector:pg17-trixie
     environment:
       POSTGRES_USER: chatbot
       POSTGRES_PASSWORD: chatbot
