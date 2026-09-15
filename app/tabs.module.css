@@ -1,0 +1,33 @@
+.tabs {
+  display: flex;
+  gap: 28px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 100px;
+  border-bottom: 1px solid #e6dfd4;
+}
+
+.tab {
+  padding: 14px 0 12px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #6f655c;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  text-decoration: none;
+}
+
+.tab:hover {
+  color: #221c17;
+}
+
+.on {
+  color: #221c17;
+  border-bottom-color: #b5532f;
+}
+
+@media (max-width: 900px) {
+  .tabs {
+    padding: 0 20px;
+  }
+}

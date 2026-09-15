@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FieldErrors, PublicConfig } from "../lib/config-service";
 import { loadModelsAction, saveAction } from "./actions";
 import s from "./config.module.css";
+import { Tabs } from "./tabs";
 
 interface Props {
   initial: PublicConfig;
@@ -113,13 +114,15 @@ export function ConfigForm({ initial, providers, rules, defaultPrompt, maxPrompt
   );
 
   return (
-    <form
-      className={s.page}
-      onSubmit={(e) => {
-        e.preventDefault();
-        save();
-      }}
-    >
+    <>
+      <Tabs active="config" />
+      <form
+        className={s.page}
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
       <header className={s.header}>
         <div className={s.titles}>
           <h1>Tu chatbot</h1>
@@ -320,7 +323,8 @@ export function ConfigForm({ initial, providers, rules, defaultPrompt, maxPrompt
           </button>
         </div>
       </dialog>
-    </form>
+      </form>
+    </>
   );
 }
 
