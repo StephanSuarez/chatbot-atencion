@@ -12,5 +12,6 @@ if (process.env.DATABASE_URL) {
 }
 
 export default defineConfig({
-  test: { environment: "node", globalSetup: "./vitest.setup.ts" },
+  // Varios archivos borran y escriben las mismas tablas de la base de tests: en paralelo se pisarían.
+  test: { environment: "node", globalSetup: "./vitest.setup.ts", fileParallelism: false },
 });

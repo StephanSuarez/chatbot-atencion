@@ -1,4 +1,4 @@
-import { getJson, modelsFrom } from "./http";
+import { EMBEDDING_MODEL, embeddings, getJson, modelsFrom } from "./http";
 import type { Provider } from "./index";
 
 const MODELS_URL = "https://api.openai.com/v1/models";
@@ -19,5 +19,8 @@ export const openai: Provider = {
       .map((m) => m.id as string)
       .filter((id) => !NOT_CHAT.test(id))
       .sort();
+  },
+  async embed(texts, apiKey) {
+    return embeddings("openai", "https://api.openai.com/v1/embeddings", EMBEDDING_MODEL, texts, apiKey);
   },
 };

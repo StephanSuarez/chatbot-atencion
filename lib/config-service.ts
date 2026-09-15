@@ -1,7 +1,7 @@
 import { readConfig, saveConfig as saveRow, type ConfigRow } from "./config-repository";
 import { decryptApiKey, encryptApiKey, lastFour, maskApiKey } from "./crypto";
 import { readEncryptionKey } from "./env";
-import { getProvider, ProviderError } from "./providers";
+import { getProvider, ProviderError, type Provider } from "./providers";
 
 // Todas las reglas de la spec 001 viven aquí (plan §4). La key completa nunca sale de este módulo.
 
@@ -71,6 +71,14 @@ function toPublic(row: ConfigRow | null): PublicConfig {
 
 export async function getConfig(): Promise<PublicConfig> {
   return toPublic(await readConfig());
+}
+
+// Solo para el servidor (indexador de la 002): el resultado lleva la key descifrada.
+export async function getLlmCredentials(): Promise<{ provider: Provider; apiKey: string } | null> {
+  const row = await readConfig();
+  const provider = row?.provider ? getProvider(row.provider) : undefined;
+  const apiKey = savedKey(row);
+  return provider && apiKey ? { provider, apiKey } : null;
 }
 
 function providerErrors(error: unknown, providerName: string): FieldErrors {

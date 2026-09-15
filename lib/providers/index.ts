@@ -1,15 +1,16 @@
 import { openai } from "./openai";
 import { openrouter } from "./openrouter";
 
-export { ProviderError, type ProviderErrorKind } from "./http";
+export { EMBEDDING_MODEL, ProviderError, type ProviderErrorKind } from "./http";
 
-// Registro de proveedores de LLM (FR-006). Agregar uno = implementar estas dos operaciones y sumarlo a la lista.
+// Registro de proveedores de LLM (FR-006). Agregar uno = implementar estas operaciones y sumarlo a la lista.
 export interface Provider {
   id: string;
   name: string;
-  // Lanza ProviderError("invalid_key" | "unavailable") si la key no se puede verificar.
+  // Lanzan ProviderError("invalid_key" | "unavailable") si el proveedor rechaza la key o no responde.
   verifyKey(apiKey: string): Promise<void>;
   listChatModels(apiKey: string): Promise<string[]>;
+  embed(texts: string[], apiKey: string): Promise<number[][]>;
 }
 
 export const providers: Provider[] = [openai, openrouter];
