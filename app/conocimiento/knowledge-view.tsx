@@ -20,6 +20,7 @@ interface Props {
   pending: number;
   hasKey: boolean;
   maxDocuments: number;
+  maxFileBytes: number;
 }
 
 const ACCEPT = ".pdf,.docx,.txt";
@@ -31,6 +32,16 @@ const STATUS: Record<DocumentSummary["status"], { label: string; className: stri
 };
 
 const day = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short" });
+
+// Una acción puede fallar antes de responder (red caída, archivo que Next rechaza por tamaño):
+// sin esto la pantalla se queda esperando para siempre.
+async function call<T>(action: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await action();
+  } catch {
+    return fallback;
+  }
+}
 const kindOfName = (name: string) => KINDS[name.split(".").pop()?.toLowerCase() ?? ""] ?? "Documento";
 
 type Panel =
@@ -38,7 +49,7 @@ type Panel =
   | { kind: "document"; document: DocumentSummary }
   | null;
 
-export function KnowledgeView({ entries, documents, pending, hasKey, maxDocuments }: Props) {
+export function KnowledgeView({ entries, documents, pending, hasKey, maxDocuments, maxFileBytes }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirm, setConfirm] = useState<{ kind: "entry" | "document"; id: string; name: string } | null>(null);
@@ -50,6 +61,7 @@ export function KnowledgeView({ entries, documents, pending, hasKey, maxDocument
   const panelRef = useRef<HTMLDialogElement>(null);
   const confirmRef = useRef<HTMLDialogElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const openDocumentId = useRef<string | null>(null);
 
   useEffect(() => {
     if (panel) panelRef.current?.showModal();
@@ -72,9 +84,13 @@ export function KnowledgeView({ entries, documents, pending, hasKey, maxDocument
   function openDocument(document: DocumentSummary) {
     setPanel({ kind: "document", document });
     setDocText({ loading: document.status === "listo", text: null });
+    openDocumentId.current = document.id;
     if (document.status !== "listo") return;
-    documentTextAction(document.id).then((result) =>
-      setDocText(result.ok ? { loading: false, text: result.text } : { loading: false, text: null, error: result.error }),
+    call(() => documentTextAction(document.id), { ok: false, error: "No pudimos mostrar el texto. Intenta de nuevo." } as const).then(
+      (result) => {
+        if (openDocumentId.current !== document.id) return;
+        setDocText(result.ok ? { loading: false, text: result.text } : { loading: false, text: null, error: result.error });
+      },
     );
   }
 
@@ -85,11 +101,22 @@ export function KnowledgeView({ entries, documents, pending, hasKey, maxDocument
   }
 
   function upload(file: File) {
+    // El servidor valida lo mismo, pero un archivo de más de 4,5 MB ni siquiera le llega: se rechaza aquí con el motivo.
+    const error = !/\.(pdf|docx|txt)$/i.test(file.name)
+      ? "Solo se aceptan documentos PDF, Word (.docx) y .txt."
+      : file.size > maxFileBytes
+        ? "El documento pesa más de 4 MB."
+        : null;
+    if (error) return setNotice(`No se subió “${file.name}”. ${error}`);
+
     setUploading(file.name);
     const form = new FormData();
     form.set("file", file);
     startSaving(async () => {
-      const result = await uploadDocumentAction(form);
+      const result = await call(() => uploadDocumentAction(form), {
+        ok: false,
+        error: "No pudimos subir el documento. Revisa tu conexión e intenta de nuevo.",
+      });
       setUploading(null);
       setNotice(result.ok ? null : `No se subió “${file.name}”. ${result.error}`);
     });
@@ -99,11 +126,15 @@ export function KnowledgeView({ entries, documents, pending, hasKey, maxDocument
     const data = new FormData(form);
     const entry = panel?.kind === "entry" ? panel.entry : undefined;
     startSaving(async () => {
-      const result = await saveEntryAction({
-        id: entry?.id,
-        title: String(data.get("title") ?? ""),
-        content: String(data.get("content") ?? ""),
-      });
+      const result = await call(
+        () =>
+          saveEntryAction({
+            id: entry?.id,
+            title: String(data.get("title") ?? ""),
+            content: String(data.get("content") ?? ""),
+          }),
+        { ok: false, errors: { form: "No pudimos guardar. Tu texto sigue aquí; intenta de nuevo." } } as const,
+      );
       if (result.ok) {
         setPanel(null);
         setErrors({});
@@ -117,7 +148,10 @@ export function KnowledgeView({ entries, documents, pending, hasKey, maxDocument
     if (!confirm) return;
     const target = confirm;
     startSaving(async () => {
-      const result = await deleteItemAction(target.kind, target.id);
+      const result = await call(() => deleteItemAction(target.kind, target.id), {
+        ok: false,
+        error: "No pudimos eliminarlo. Revisa tu conexión e intenta de nuevo.",
+      });
       setConfirm(null);
       if (!result.ok) setNotice(result.error ?? null);
       else setPanel(null);
@@ -149,15 +183,15 @@ export function KnowledgeView({ entries, documents, pending, hasKey, maxDocument
               <PlusIcon /> Agregar <ChevronDown />
             </button>
             {menuOpen && (
-              <div className={s.menu} role="menu">
-                <button type="button" className={s.menuItem} role="menuitem" onClick={() => openEntry()}>
+              <div className={s.menu}>
+                <button type="button" className={s.menuItem} onClick={() => openEntry()}>
                   <span className={s.ico}><TextIcon /></span>
                   <span>
                     <strong>Escribir un texto</strong>
                     <span className={s.menuHint}>Horarios, precios, políticas…</span>
                   </span>
                 </button>
-                <button type="button" className={s.menuItem} role="menuitem" onClick={chooseFile} disabled={atLimit}>
+                <button type="button" className={s.menuItem} onClick={chooseFile} disabled={atLimit}>
                   <span className={s.ico}><UploadIcon /></span>
                   <span>
                     <strong>Subir un documento</strong>

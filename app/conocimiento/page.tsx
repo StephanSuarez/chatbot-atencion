@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { getConfig } from "../../lib/config-service";
-import { countPendingChunks, listDocuments, listEntries, MAX_DOCUMENTS } from "../../lib/kb/service";
+import { countPendingChunks, listDocuments, listEntries, MAX_DOCUMENTS, MAX_FILE_BYTES } from "../../lib/kb/service";
 import { Tabs } from "../tabs";
 import { KnowledgeView } from "./knowledge-view";
 
@@ -23,6 +23,7 @@ export default async function Page() {
         pending={pending}
         hasKey={config.apiKeyMask !== null}
         maxDocuments={MAX_DOCUMENTS}
+        maxFileBytes={MAX_FILE_BYTES}
       />
     </>
   );
