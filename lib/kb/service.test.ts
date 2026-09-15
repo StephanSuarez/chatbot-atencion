@@ -1,4 +1,5 @@
 // Integración contra la base de tests con el extractor y el partidor reales; el indexador no participa.
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db, sql } from "../db";
@@ -17,6 +18,7 @@ import {
 } from "./service";
 
 const txt = (s: string) => new TextEncoder().encode(s);
+const hashOf = (s: string) => createHash("sha256").update(txt(s)).digest("hex");
 const fixture = (name: string) => new Uint8Array(readFileSync(new URL(`./fixtures/${name}`, import.meta.url)));
 const chunksOf = (column: "entry_id" | "document_id", id: string) =>
   sql`select text from kb_chunks where ${sql(column)} = ${id} order by position`;
@@ -122,6 +124,26 @@ describe("documentos (HU-2, HU-3)", () => {
       ok: false,
       error: 'Este archivo ya está cargado como "precios.txt".',
     });
+  });
+
+  it("volver a subir un documento interrumpido o fallido lo reemplaza, aun con 20 documentos", async () => {
+    const old = new Date(Date.now() - 10 * 60 * 1000);
+    await db.insert(kbDocuments).values([
+      ...Array.from({ length: MAX_DOCUMENTS - 2 }, (_, i) => ({ name: `d${i}.txt`, contentHash: `h${i}`, status: "listo" as const })),
+      { name: "interrumpido.txt", contentHash: hashOf("uno"), status: "procesando", createdAt: old },
+      { name: "fallido.txt", contentHash: hashOf("dos"), status: "no_se_pudo_leer", error: "x" },
+    ]);
+
+    expect((await uploadDocument("interrumpido.txt", txt("uno"))).ok).toBe(true);
+    expect((await uploadDocument("fallido.txt", txt("dos"))).ok).toBe(true);
+    const docs = await listDocuments();
+    expect(docs).toHaveLength(MAX_DOCUMENTS);
+    expect(docs.filter((d) => d.status === "listo")).toHaveLength(MAX_DOCUMENTS);
+  });
+
+  it("un duplicado que se está procesando ahora mismo sí se rechaza", async () => {
+    await db.insert(kbDocuments).values({ name: "a.txt", contentHash: hashOf("uno"), status: "procesando" });
+    expect(await uploadDocument("b.txt", txt("uno"))).toEqual({ ok: false, error: 'Este archivo ya está cargado como "a.txt".' });
   });
 
   it("un 'procesando' de más de 5 minutos se muestra como 'no se pudo leer'", async () => {

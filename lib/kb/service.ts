@@ -71,12 +71,11 @@ export async function listDocuments(now = new Date()): Promise<DocumentSummary[]
     })
     .from(kbDocuments)
     .orderBy(desc(kbDocuments.createdAt));
-  return rows.map((doc) =>
-    doc.status === "procesando" && now.getTime() - doc.createdAt.getTime() > STALE_PROCESSING_MS
-      ? { ...doc, status: "no_se_pudo_leer", error: STALE_REASON }
-      : doc,
-  );
+  return rows.map((doc) => (isStale(doc, now) ? { ...doc, status: "no_se_pudo_leer", error: STALE_REASON } : doc));
 }
+
+const isStale = (doc: { status: string; createdAt: Date }, now = new Date()) =>
+  doc.status === "procesando" && now.getTime() - doc.createdAt.getTime() > STALE_PROCESSING_MS;
 
 export async function getDocumentText(id: string): Promise<string | null> {
   const [doc] = await db
@@ -115,12 +114,22 @@ export async function countPendingChunks(): Promise<number> {
 async function registerDocument(name: string, contentHash: string): Promise<UploadResult> {
   return db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('kb_documents'))`);
+
+    const [duplicate] = await tx
+      .select({ id: kbDocuments.id, name: kbDocuments.name, status: kbDocuments.status, createdAt: kbDocuments.createdAt })
+      .from(kbDocuments)
+      .where(eq(kbDocuments.contentHash, contentHash));
+    // Volver a subir un documento fallido o interrumpido lo reemplaza: es lo que la pantalla le pide al usuario.
+    if (duplicate?.status === "no_se_pudo_leer" || (duplicate && isStale(duplicate))) {
+      await tx.delete(kbDocuments).where(eq(kbDocuments.id, duplicate.id));
+    } else if (duplicate) {
+      return { ok: false, error: `Este archivo ya está cargado como "${duplicate.name}".` } as const;
+    }
+
     const [{ n }] = await tx.select({ n: count() }).from(kbDocuments);
     if (n >= MAX_DOCUMENTS) {
       return { ok: false, error: `Ya tienes ${MAX_DOCUMENTS} documentos. Elimina alguno para subir otro.` } as const;
     }
-    const [duplicate] = await tx.select({ name: kbDocuments.name }).from(kbDocuments).where(eq(kbDocuments.contentHash, contentHash));
-    if (duplicate) return { ok: false, error: `Este archivo ya está cargado como "${duplicate.name}".` } as const;
 
     const [doc] = await tx.insert(kbDocuments).values({ name, contentHash, status: "procesando" }).returning({ id: kbDocuments.id });
     return { ok: true, id: doc.id } as const;
