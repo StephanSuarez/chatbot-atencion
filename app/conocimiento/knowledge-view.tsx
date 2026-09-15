@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { DocumentSummary } from "../../lib/kb/service";
+import { call } from "../call";
 import c from "../config.module.css";
 import { deleteItemAction, documentTextAction, saveEntryAction, uploadDocumentAction } from "./actions";
 import s from "./knowledge.module.css";
@@ -32,16 +33,6 @@ const STATUS: Record<DocumentSummary["status"], { label: string; className: stri
 };
 
 const day = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short" });
-
-// Una acción puede fallar antes de responder (red caída, archivo que Next rechaza por tamaño):
-// sin esto la pantalla se queda esperando para siempre.
-async function call<T>(action: () => Promise<T>, fallback: T): Promise<T> {
-  try {
-    return await action();
-  } catch {
-    return fallback;
-  }
-}
 const kindOfName = (name: string) => KINDS[name.split(".").pop()?.toLowerCase() ?? ""] ?? "Documento";
 
 type Panel =
