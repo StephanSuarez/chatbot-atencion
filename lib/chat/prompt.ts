@@ -42,6 +42,6 @@ export function buildMessages({ companyName, prompt, fixedRules, found, history,
 function reference(found: FoundChunk[]): string {
   if (!found.length) return "<informacion>\nNo hay información relacionada con esta pregunta.\n</informacion>";
   // Un documento no puede cerrar el bloque por su cuenta y colar instrucciones fuera de él.
-  const chunks = found.map((chunk) => chunk.text.replaceAll("</informacion>", ""));
+  const chunks = found.map((chunk) => chunk.text.replace(/<\/\s*informacion\s*>/gi, ""));
   return `<informacion>\n${chunks.join("\n---\n")}\n</informacion>`;
 }

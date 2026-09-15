@@ -19,7 +19,6 @@ export function retrievalQuery(history: ChatMessage[], message: string): string 
   return previous ? `${previous}\n${message}` : message;
 }
 
-// Los pedazos más parecidos a la consulta, solo entre los indexados con el modelo actual (002).
 export async function findRelated(query: string, provider: Provider, apiKey: string): Promise<FoundChunk[]> {
   const [vector] = await provider.embed([query], apiKey);
   const similarity = sql<number>`1 - (${cosineDistance(kbChunks.embedding, vector)})`;
