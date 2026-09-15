@@ -1,6 +1,8 @@
 "use server";
 
+import { after } from "next/server";
 import { loadModels, saveConfig, type ConfigInput, type ModelsResult, type SaveResult } from "../lib/config-service";
+import { indexPending } from "../lib/kb/indexer";
 
 // Sin login (principio 11): cualquiera puede llamar estas acciones con un POST. Lo que llega no es confiable.
 const str = (value: unknown) => (typeof value === "string" ? value : "");
@@ -10,13 +12,16 @@ const logError = (what: string, e: unknown) => console.error(`[config] ${what}:`
 
 export async function saveAction(input: ConfigInput): Promise<SaveResult> {
   try {
-    return await saveConfig({
+    const result = await saveConfig({
       companyName: str(input?.companyName),
       prompt: str(input?.prompt),
       provider: str(input?.provider),
       model: str(input?.model),
       apiKey: str(input?.apiKey),
     });
+    // Una key o un proveedor nuevos pueden destrabar pedazos pendientes de la base de conocimiento (plan 002 §3).
+    if (result.ok) after(() => indexPending().catch((e) => logError("no se pudo indexar", e)));
+    return result;
   } catch (e) {
     logError("no se pudo guardar", e);
     return { ok: false, errors: { form: "No pudimos guardar. Tus cambios siguen aquí; intenta de nuevo." } };

@@ -1,4 +1,4 @@
-import { getJson, modelsFrom } from "./http";
+import { EMBEDDING_MODEL, embeddings, getJson, modelsFrom } from "./http";
 import type { Provider } from "./index";
 
 export const openrouter: Provider = {
@@ -17,5 +17,8 @@ export const openrouter: Provider = {
       })
       .map((m) => m.id as string)
       .sort();
+  },
+  async embed(texts, apiKey) {
+    return embeddings("openrouter", "https://openrouter.ai/api/v1/embeddings", `openai/${EMBEDDING_MODEL}`, texts, apiKey);
   },
 };
