@@ -19,8 +19,8 @@ const KEY_HELP_URL: Record<string, string> = {
   openrouter: "https://openrouter.ai/keys",
 };
 
-const thousands = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-const joinEs = (items: string[]) => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} y ${items.at(-1)}`);
+export const thousands = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+export const joinEs = (items: string[]) => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} y ${items.at(-1)}`);
 
 export function ConfigForm({ initial, providers, rules, defaultPrompt, maxPrompt }: Props) {
   const [saved, setSaved] = useState(initial);

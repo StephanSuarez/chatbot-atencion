@@ -30,6 +30,10 @@ describe("armador del prompt", () => {
     expect(system).toContain("por ahora no puedes agendarla");
   });
 
+  it("pide texto plano, porque la pantalla no interpreta markdown", () => {
+    expect(systemOf(buildMessages(base))).toContain("Responde en texto plano, sin formato markdown");
+  });
+
   it("reemplaza el nombre de la empresa en el prompt", () => {
     const system = systemOf(buildMessages(base));
     expect(system).toContain("Eres el asistente de Café Aurora. Saluda como el asistente de Café Aurora.");
