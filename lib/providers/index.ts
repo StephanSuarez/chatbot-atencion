@@ -1,8 +1,8 @@
-import type { ChatMessage } from "./http";
+import type { ChatMessage, ChatResult, Tool } from "./http";
 import { openai } from "./openai";
 import { openrouter } from "./openrouter";
 
-export { EMBEDDING_MODEL, ProviderError, type ChatMessage, type ProviderErrorKind } from "./http";
+export { EMBEDDING_MODEL, ProviderError, type ChatMessage, type ChatResult, type ProviderErrorKind, type Tool } from "./http";
 
 // Registro de proveedores de LLM (FR-006). Agregar uno = implementar estas operaciones y sumarlo a la lista.
 export interface Provider {
@@ -12,7 +12,7 @@ export interface Provider {
   verifyKey(apiKey: string): Promise<void>;
   listChatModels(apiKey: string): Promise<string[]>;
   embed(texts: string[], apiKey: string): Promise<number[][]>;
-  chat(messages: ChatMessage[], model: string, apiKey: string): Promise<string>;
+  chat(messages: ChatMessage[], model: string, apiKey: string, tools?: Tool[]): Promise<ChatResult>;
 }
 
 export const providers: Provider[] = [openai, openrouter];

@@ -88,13 +88,17 @@ describe("OpenRouter", () => {
     expect(await errorKind(openrouter.verifyKey(apiKey))).toBe("invalid_key");
   });
 
-  it("lista solo modelos que generan texto, ordenados", async () => {
+  it("lista solo modelos que generan texto y aceptan herramientas, ordenados (004)", async () => {
     // El último modelo es construido: hoy ningún modelo real de OpenRouter deja de generar texto.
-    const imageOnly = { id: "a/solo-imagen", architecture: { output_modalities: ["image"] } };
+    const imageOnly = { id: "a/solo-imagen", architecture: { output_modalities: ["image"] }, supported_parameters: ["tools"] };
     respond(200, { data: [...openrouterModels.data, imageOnly] });
 
-    const expected = openrouterModels.data.map((m) => m.id).sort();
+    const expected = openrouterModels.data
+      .filter((m) => m.supported_parameters.includes("tools"))
+      .map((m) => m.id)
+      .sort();
     expect(await openrouter.listChatModels(apiKey)).toEqual(expected);
+    expect(expected).not.toContain("inference-net/schematron-v2-turbo");
     expect(fetchMock.mock.calls[0][0]).toBe("https://openrouter.ai/api/v1/models");
   });
 });

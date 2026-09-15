@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ProviderError, type ChatMessage } from "../providers";
+import { ProviderError, type ChatMessage, type ChatResult } from "../providers";
 
 // Configuración, indexador, base y buscador falsos: aquí se prueban las reglas del servicio, no la red ni la base.
 const fake = vi.hoisted(() => ({
@@ -8,7 +8,7 @@ const fake = vi.hoisted(() => ({
   pending: 0,
 }));
 
-const chat = vi.fn<(messages: ChatMessage[], model: string, key: string) => Promise<string>>();
+const chat = vi.fn<(messages: ChatMessage[], model: string, key: string) => Promise<ChatResult>>();
 const provider = { id: "fake", name: "Fake", chat };
 
 vi.mock("../config-service", () => ({
@@ -33,7 +33,7 @@ beforeEach(() => {
   fake.config = { companyName: "Café Aurora", prompt: "Eres el asistente.", model: "modelo-x", complete: true, missing: [] };
   fake.credentials = { provider, apiKey: "sk-guardada" };
   fake.pending = 0;
-  chat.mockReset().mockResolvedValue("Abrimos a las 7:00.");
+  chat.mockReset().mockResolvedValue({ text: "Abrimos a las 7:00." });
   findRelated.mockReset().mockResolvedValue(found);
   indexPending.mockClear();
   vi.spyOn(console, "info").mockImplementation(() => {});
