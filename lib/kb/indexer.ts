@@ -6,7 +6,6 @@ import { kbChunks } from "../schema";
 
 export const BATCH_SIZE = 100;
 
-// Calcula el vector de los pedazos pendientes: sin vector o calculados con otro modelo (plan 002 §3).
 // Se puede lanzar cuantas veces se quiera. Sin credenciales, o si el proveedor falla, quedan pendientes para la próxima.
 // ponytail: dos ejecuciones a la vez pueden calcular el mismo lote dos veces (mismo resultado, doble costo);
 // un advisory lock de PostgreSQL si ese costo llega a importar.
