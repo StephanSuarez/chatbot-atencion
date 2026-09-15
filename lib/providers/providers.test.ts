@@ -100,11 +100,15 @@ describe("OpenRouter", () => {
 });
 
 describe("errores del proveedor", () => {
+  it("sin respuesta dentro del plazo → timeout", async () => {
+    fetchMock.mockRejectedValue(new DOMException("timeout", "TimeoutError"));
+    expect(await errorKind(openai.listChatModels(apiKey))).toBe("timeout");
+  });
+
   it.each([
     ["500", () => respond(500, { error: "boom" })],
     ["429", () => respond(429, { error: "rate limit" })],
     ["error de red", () => fetchMock.mockRejectedValue(new TypeError("fetch failed"))],
-    ["timeout", () => fetchMock.mockRejectedValue(new DOMException("timeout", "TimeoutError"))],
     ["respuesta sin data", () => respond(200, { foo: 1 })],
     ["respuesta no JSON", () => fetchMock.mockResolvedValue(new Response("<html>", { status: 200 }))],
   ])("%s → unavailable", async (_, setup) => {
