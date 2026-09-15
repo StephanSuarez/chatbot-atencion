@@ -1,7 +1,7 @@
 import { FIXED_RULES, getConfig, getLlmCredentials } from "../config-service";
 import { indexPending } from "../kb/indexer";
 import { countPendingChunks } from "../kb/service";
-import { ProviderError, type ChatMessage, type ProviderErrorKind } from "../providers";
+import { EMBEDDING_MODEL, ProviderError, type ChatMessage, type ProviderErrorKind } from "../providers";
 import { buildMessages, HISTORY_LIMIT } from "./prompt";
 import { findRelated, retrievalQuery, type FoundChunk } from "./retrieve";
 
@@ -29,6 +29,8 @@ export async function sendMessage(input: { history?: unknown; message?: unknown 
   const history = cleanHistory(input.history);
   const { provider, apiKey } = credentials;
   const started = Date.now();
+  // El mismo tipo de error puede venir de buscar (modelo de embeddings) o de responder (modelo de chat).
+  let failingModel = EMBEDDING_MODEL;
   try {
     // Red de seguridad del plan 002: lo que quedó pendiente se indexa antes de buscar.
     await indexPending();
@@ -42,6 +44,7 @@ export async function sendMessage(input: { history?: unknown; message?: unknown 
       history,
       message,
     });
+    failingModel = config.model;
     const reply = await provider.chat(messages, config.model, apiKey);
     console.info(
       `[chat] ${provider.id} ${config.model}: ${sources.length} pedazos, mejor ${sources[0]?.similarity.toFixed(2) ?? "-"}, ${Date.now() - started} ms`,
@@ -49,7 +52,7 @@ export async function sendMessage(input: { history?: unknown; message?: unknown 
     return { ok: true, reply, sources, pendingInfo };
   } catch (e) {
     if (!(e instanceof ProviderError)) throw e;
-    return { ok: false, error: providerMessage(e.kind, provider.name, config.model) };
+    return { ok: false, error: providerMessage(e.kind, provider.name, failingModel) };
   }
 }
 

@@ -129,6 +129,12 @@ describe("errores del proveedor (FR-012)", () => {
     expect(chat).not.toHaveBeenCalled();
   });
 
+  it("si falla el modelo de búsqueda, el mensaje nombra ese modelo y no el de chat", async () => {
+    findRelated.mockRejectedValue(new ProviderError("fake", "model_unavailable"));
+    const result = await sendMessage({ message: "hola" });
+    expect(result).toEqual({ ok: false, error: expect.stringMatching(/text-embedding-3-small ya no está disponible/) });
+  });
+
   it("un error que no es del proveedor no se esconde", async () => {
     chat.mockRejectedValue(new Error("bug"));
     await expect(sendMessage({ message: "hola" })).rejects.toThrow("bug");
