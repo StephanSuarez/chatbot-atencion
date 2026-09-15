@@ -1,6 +1,6 @@
 # Constitución del Proyecto — Chatbot
 
-Estado: **Aprobada** por el usuario el 2026-09-13. Modificada el 2026-09-13 (un solo chatbot; API key del LLM en principios 10 y 11) — reaprobada el 2026-09-13.
+Estado: **Aprobada** por el usuario el 2026-09-13. Modificada el 2026-09-13 (un solo chatbot; API key del LLM en principios 10 y 11) — reaprobada el 2026-09-13. Modificada el 2026-09-15 (principio 4: se guardan todas las conversaciones) — aprobada con la spec 004.
 
 Proyecto de aprendizaje para entender cómo funciona un chatbot de atención al cliente: una plataforma con un único chatbot para una única empresa, que cualquier persona puede configurar y probar (chat de prueba, luego WhatsApp). No es un SaaS ni es multiempresa.
 
@@ -22,7 +22,8 @@ Se aplica el principio de mínimo privilegio (p. ej., pedir a Google y Meta solo
 
 ### 4. Minimización de datos
 Persistir solo los datos necesarios para requisitos concretos del producto.
-De los clientes finales solo se guarda lo que una feature necesita (p. ej., nombre y contacto para una cita, historial para la derivación a humano).
+De los clientes finales solo se guarda lo que una feature necesita (p. ej., nombre y contacto para una cita).
+Se guardan todas las conversaciones del bot, para la derivación a humano y para auditar cómo atiende (decisión del usuario, 2026-09-15, spec 004). El cliente es informado de que su conversación se guarda.
 
 ### 5. Las restricciones externas son requisitos reales
 Las restricciones de APIs, plataformas, regulaciones o servicios externos (WhatsApp Business Platform, Google Calendar, leyes de protección de datos) deben reflejarse en las specs correspondientes cuando afecten el comportamiento del producto.
