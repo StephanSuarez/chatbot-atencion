@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, integer, pgTable, text, timestamp, uuid, vector } from "drizzle-orm/pg-core";
+import { bigserial, boolean, check, index, integer, pgTable, text, timestamp, uuid, vector } from "drizzle-orm/pg-core";
 
 // Única configuración del chatbot (FR-001): la base garantiza una sola fila (id siempre true).
 export const chatbotConfig = pgTable(
@@ -57,4 +57,43 @@ export const kbChunks = pgTable(
     embeddingModel: text("embedding_model"),
   },
   (t) => [check("kb_chunks_one_source", sql`num_nonnulls(${t.entryId}, ${t.documentId}) = 1`)],
+);
+
+// Conversaciones (004). Se guardan todas, con su origen; WhatsApp (007) y simulación (009) amplían el check.
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    origin: text("origin", { enum: ["chat_de_prueba"] }).notNull(),
+    mode: text("mode", { enum: ["ia", "humano"] }).notNull().default("ia"),
+    derived: boolean("derived").notNull().default(false),
+    // Pedidos de "hablar con una persona" desde que está en modo IA (plan §4): lo cuenta el servidor.
+    personRequests: integer("person_requests").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("conversations_origin", sql`${t.origin} in ('chat_de_prueba')`),
+    check("conversations_mode", sql`${t.mode} in ('ia', 'humano')`),
+  ],
+);
+
+// Una sola línea de tiempo: mensajes, notas del bot y cambios de modo (plan §6).
+export const conversationEntries = pgTable(
+  "conversation_entries",
+  {
+    seq: bigserial("seq", { mode: "number" }).primaryKey(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    author: text("author", { enum: ["cliente", "bot", "equipo", "nota", "evento"] }).notNull(),
+    text: text("text").notNull(),
+    // Id que genera el navegador por mensaje: un reintento no lo duplica.
+    clientMessageId: uuid("client_message_id").unique(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("conversation_entries_author", sql`${t.author} in ('cliente', 'bot', 'equipo', 'nota', 'evento')`),
+    index("conversation_entries_conversation").on(t.conversationId, t.seq),
+  ],
 );
