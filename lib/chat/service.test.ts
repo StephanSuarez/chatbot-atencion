@@ -121,6 +121,19 @@ describe("respuesta normal (FR-001, FR-003)", () => {
     expect(retry.entries.map((e) => e.text)).toEqual(["Abrimos a las 7:00."]);
   });
 
+  it("reintentar tras un fallo del proveedor responde sin guardar el mensaje dos veces (FR-012)", async () => {
+    const clientMessageId = randomUUID();
+    chat.mockRejectedValueOnce(new ProviderError("fake", "timeout"));
+    const failed = await sendMessage({ clientMessageId, message: "¿a qué hora abren?" });
+    expect(failed).toMatchObject({ ok: false });
+    if (failed.ok) throw new Error("debía fallar");
+
+    const retry = ok(await sendMessage({ conversationId: failed.conversationId, clientMessageId, message: "¿a qué hora abren?" }));
+    expect(retry.entries.map((e) => e.text)).toEqual(["Abrimos a las 7:00."]);
+    const all = await getEntries(retry.conversationId, { forClient: true });
+    expect(all?.map((e) => e.author)).toEqual(["cliente", "bot"]);
+  });
+
   it("avisa si queda información pendiente que el bot no pudo usar", async () => {
     fake.pending = 3;
     expect(await send("hola")).toMatchObject({ ok: true, pendingInfo: true });

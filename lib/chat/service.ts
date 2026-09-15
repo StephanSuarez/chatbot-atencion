@@ -44,10 +44,14 @@ export async function sendMessage(input: {
   const saved = await saveClientMessage({ conversationId: input.conversationId, clientMessageId, text: message });
   const { conversationId, seq } = saved;
   const conversation = await getConversation(conversationId);
-  const since = (mode: Mode) => answer(conversationId, seq, mode);
+  if (!conversation || conversation.mode === "humano") return answer(conversationId, seq, conversation?.mode ?? "ia");
 
-  // En modo humano responde el equipo; un reintento ya guardado tampoco vuelve a llamar al modelo.
-  if (!conversation || conversation.mode === "humano" || saved.duplicate) return since(conversation?.mode ?? "ia");
+  // Reintento del mismo mensaje: si ya tiene respuesta se devuelve esa; si el proveedor falló antes de
+  // responder, no hay respuesta todavía y se vuelve a intentar sin guardar el mensaje otra vez (FR-012).
+  if (saved.duplicate) {
+    const previous = await answer(conversationId, seq, conversation.mode);
+    if (!previous.ok || previous.entries.length > 0) return previous;
+  }
 
   const { provider, apiKey } = credentials;
   const started = Date.now();
@@ -92,8 +96,7 @@ export async function sendMessage(input: {
         sources[0]?.similarity.toFixed(2) ?? "-"
       }, ${derivation ? `derivar=${derivation.reason}` : "respuesta"}, ${Date.now() - started} ms`,
     );
-    const after = await answer(conversationId, seq, "ia", sources, pendingInfo);
-    return after;
+    return answer(conversationId, seq, "ia", sources, pendingInfo);
   } catch (e) {
     if (!(e instanceof ProviderError)) throw e;
     return { ok: false, error: providerMessage(e.kind, provider.name, failingModel), conversationId };

@@ -16,6 +16,8 @@ interface Message {
   content: string;
   sources?: FoundChunk[];
   failed?: string;
+  // El mismo id al reintentar: el servidor no guarda el mensaje dos veces (004, FR-012).
+  clientMessageId?: string;
 }
 
 const newId = () => crypto.randomUUID();
@@ -40,9 +42,9 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
   const tooLong = draft.length > MAX_MESSAGE;
 
   // La conversación se guarda en el servidor (004, FR-001): aquí solo se recuerda su id mientras dura la página.
-  function send(text: string, before: Message[]) {
-    setMessages([...before, { role: "user", content: text }]);
-    const clientMessageId = newId();
+  function send(text: string, before: Message[], retryId?: string) {
+    const clientMessageId = retryId ?? newId();
+    setMessages([...before, { role: "user", content: text, clientMessageId }]);
     startSending(async () => {
       const result = await call(() => sendMessageAction({ conversationId, clientMessageId, message: text }), {
         ok: false as const,
@@ -55,13 +57,13 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
           content: entry.text,
           ...(i === 0 && entry.author === "bot" && { sources: result.sources }),
         }));
-        setMessages([...before, { role: "user", content: text }, ...replies]);
+        setMessages([...before, { role: "user", content: text, clientMessageId }, ...replies]);
         setPendingInfo(result.pendingInfo);
       } else if ("missing" in result && result.missing) {
         setBlocked(result.missing);
       } else {
         if (result.conversationId) setConversationId(result.conversationId);
-        setMessages([...before, { role: "user", content: text, failed: result.error }]);
+        setMessages([...before, { role: "user", content: text, failed: result.error, clientMessageId }]);
       }
     });
   }
@@ -140,7 +142,7 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
                         {index === messages.length - 1 && !sending && (
                           <>
                             {" · "}
-                            <button type="button" className={s.retry} onClick={() => send(message.content, messages.slice(0, index))}>
+                            <button type="button" className={s.retry} onClick={() => send(message.content, messages.slice(0, index), message.clientMessageId)}>
                               Reintentar
                             </button>
                           </>
