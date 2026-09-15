@@ -32,7 +32,6 @@ export const kbDocuments = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
-    // Huella del contenido: la base impide subir dos veces el mismo archivo (FR-009).
     contentHash: text("content_hash").notNull().unique(),
     status: text("status", { enum: ["procesando", "listo", "no_se_pudo_leer"] }).notNull(),
     error: text("error"),
