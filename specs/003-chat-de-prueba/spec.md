@@ -53,7 +53,7 @@ Como persona que prueba, quiero saber qué falta cuando el chat no funciona, par
 
 - **FR-001:** El chat está en una pestaña «Probar», junto a «Tu chatbot» y «Lo que sabe», abierta a cualquier persona.
 - **FR-002:** Cada persona que prueba tiene su propia conversación. Varias personas probando a la vez no ven los mensajes de las otras.
-- **FR-003:** Las conversaciones no se guardan. Recargar la página o elegir «Nueva conversación» empieza una conversación de cero.
+- **FR-003:** *(Reemplazado por la spec 004, FR-001: desde la 004 todas las conversaciones se guardan.)* Las conversaciones no se guardan. Recargar la página o elegir «Nueva conversación» empieza una conversación de cero.
 - **FR-004:** Los mensajes son solo texto, de hasta 1.000 caracteres. Un mensaje vacío o solo con espacios no se envía.
 - **FR-005:** El bot responde con el nombre de la empresa, el prompt de comportamiento, las reglas fijas (principios 8, 9 y 10) y la información de su base de conocimiento que esté lista para usarse (002, FR-011).
 - **FR-006:** Para cada mensaje, el bot busca en su base de conocimiento la información relacionada con la pregunta y responde solo con esa información y con lo que se habló en la conversación.
