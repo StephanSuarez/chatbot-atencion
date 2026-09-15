@@ -16,13 +16,18 @@ interface Message {
   content: string;
   sources?: FoundChunk[];
   failed?: string;
+  // El mismo id al reintentar: el servidor no guarda el mensaje dos veces (004, FR-012).
+  clientMessageId?: string;
 }
+
+const newId = () => crypto.randomUUID();
 
 // Los pedazos llegan con su encabezado de origen («[menu.txt]»); el origen ya se muestra aparte.
 const withoutHeader = (text: string) => text.replace(/^\[[^\]\n]*\]\n/, "");
 
 export function ChatView({ ready, missing }: { ready: boolean; missing: string[] }) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationId, setConversationId] = useState<string>();
   const [draft, setDraft] = useState("");
   const [openSources, setOpenSources] = useState<Set<number>>(new Set());
   const [pendingInfo, setPendingInfo] = useState(false);
@@ -36,22 +41,29 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
 
   const tooLong = draft.length > MAX_MESSAGE;
 
-  // Conversación solo en el navegador (FR-003): se envía el historial sin los mensajes que fallaron.
-  function send(text: string, before: Message[]) {
-    setMessages([...before, { role: "user", content: text }]);
-    const history = before.filter((m) => !m.failed).map(({ role, content }) => ({ role, content }));
+  // La conversación se guarda en el servidor (004, FR-001): aquí solo se recuerda su id mientras dura la página.
+  function send(text: string, before: Message[], retryId?: string) {
+    const clientMessageId = retryId ?? newId();
+    setMessages([...before, { role: "user", content: text, clientMessageId }]);
     startSending(async () => {
-      const result = await call(() => sendMessageAction({ history, message: text }), {
+      const result = await call(() => sendMessageAction({ conversationId, clientMessageId, message: text }), {
         ok: false as const,
         error: "No pudimos contactar al servidor. Revisa tu conexión e intenta de nuevo.",
       });
       if (result.ok) {
-        setMessages([...before, { role: "user", content: text }, { role: "assistant", content: result.reply, sources: result.sources }]);
+        setConversationId(result.conversationId);
+        const replies: Message[] = result.entries.map((entry, i) => ({
+          role: "assistant" as const,
+          content: entry.text,
+          ...(i === 0 && entry.author === "bot" && { sources: result.sources }),
+        }));
+        setMessages([...before, { role: "user", content: text, clientMessageId }, ...replies]);
         setPendingInfo(result.pendingInfo);
       } else if ("missing" in result && result.missing) {
         setBlocked(result.missing);
       } else {
-        setMessages([...before, { role: "user", content: text, failed: result.error }]);
+        if (result.conversationId) setConversationId(result.conversationId);
+        setMessages([...before, { role: "user", content: text, failed: result.error, clientMessageId }]);
       }
     });
   }
@@ -64,6 +76,7 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
   }
 
   function newConversation() {
+    setConversationId(undefined);
     setMessages([]);
     setOpenSources(new Set());
     setDraft("");
@@ -82,7 +95,7 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
       <header className={c.header}>
         <div className={c.titles}>
           <h1>Probar tu chatbot</h1>
-          <p className={c.subtitle}>Escríbele como lo haría un cliente. Esta conversación no se guarda.</p>
+          <p className={c.subtitle}>Escríbele como lo haría un cliente. Esta conversación se guarda para mejorar la atención.</p>
         </div>
         {!blocked && messages.length > 0 && (
           <button type="button" className={`${c.secondary} ${s.newButton}`} onClick={newConversation} disabled={sending}>
@@ -129,7 +142,7 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
                         {index === messages.length - 1 && !sending && (
                           <>
                             {" · "}
-                            <button type="button" className={s.retry} onClick={() => send(message.content, messages.slice(0, index))}>
+                            <button type="button" className={s.retry} onClick={() => send(message.content, messages.slice(0, index), message.clientMessageId)}>
                               Reintentar
                             </button>
                           </>
