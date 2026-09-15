@@ -19,7 +19,6 @@ export function chunkText(header: string, text: string): string[] {
   return chunks.map((chunk) => `[${header}]\n${chunk}`);
 }
 
-// Párrafos; si uno no cabe, sus oraciones; si una oración no cabe, cortes fijos.
 function pieces(text: string): string[] {
   return text
     .split(/\n\s*\n/)
@@ -32,7 +31,6 @@ function pieces(text: string): string[] {
 const hardCut = (s: string) =>
   Array.from({ length: Math.ceil(s.length / CHUNK_SIZE) }, (_, i) => s.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE));
 
-// Últimos ~CHUNK_OVERLAP caracteres, empezando en una palabra completa.
 function overlapTail(chunk: string): string {
   const tail = chunk.slice(-CHUNK_OVERLAP);
   const firstSpace = tail.search(/\s/);
