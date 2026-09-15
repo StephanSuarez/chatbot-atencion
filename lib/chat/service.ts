@@ -45,7 +45,10 @@ export async function sendMessage(input: { history?: unknown; message?: unknown 
       message,
     });
     failingModel = config.model;
-    const reply = await provider.chat(messages, config.model, apiKey);
+    const result = await provider.chat(messages, config.model, apiKey);
+    // Sin herramientas ofrecidas el modelo solo puede responder texto; derivar es de la 004 (KAN-28).
+    const reply = "text" in result ? result.text : "";
+    if (!reply) throw new ProviderError(provider.id, "unavailable");
     console.info(
       `[chat] ${provider.id} ${config.model}: ${sources.length} pedazos, mejor ${sources[0]?.similarity.toFixed(2) ?? "-"}, ${Date.now() - started} ms`,
     );

@@ -8,12 +8,13 @@ export const openrouter: Provider = {
   async verifyKey(apiKey) {
     await getJson("openrouter", "https://openrouter.ai/api/v1/key", apiKey);
   },
+  // Solo modelos que generan texto y aceptan herramientas: sin herramientas el bot no puede derivar (plan 004 §7).
   async listChatModels() {
     const models = modelsFrom("openrouter", await getJson("openrouter", "https://openrouter.ai/api/v1/models"));
     return models
       .filter((m) => {
         const output = (m.architecture as { output_modalities?: unknown } | undefined)?.output_modalities;
-        return Array.isArray(output) && output.includes("text");
+        return Array.isArray(output) && output.includes("text") && asArray(m.supported_parameters).includes("tools");
       })
       .map((m) => m.id as string)
       .sort();
@@ -21,7 +22,9 @@ export const openrouter: Provider = {
   async embed(texts, apiKey) {
     return embeddings("openrouter", "https://openrouter.ai/api/v1/embeddings", `openai/${EMBEDDING_MODEL}`, texts, apiKey);
   },
-  async chat(messages, model, apiKey) {
-    return chatCompletion("openrouter", "https://openrouter.ai/api/v1/chat/completions", model, messages, apiKey);
+  async chat(messages, model, apiKey, tools) {
+    return chatCompletion("openrouter", "https://openrouter.ai/api/v1/chat/completions", model, messages, apiKey, tools);
   },
 };
+
+const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);

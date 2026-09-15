@@ -88,21 +88,56 @@ export interface ChatMessage {
   content: string;
 }
 
+// Herramienta que se le ofrece al modelo (tool calling, plan 004 §4).
+export interface Tool {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+// El modelo responde texto o pide usar una herramienta; los argumentos vienen como texto JSON.
+export type ChatResult = { text: string } | { tool: string; args: string };
+
 // POST /chat/completions compatible con OpenAI. Temperatura baja: respuestas estables para no inventar (plan 003 §12).
-export async function chatCompletion(provider: string, url: string, model: string, messages: ChatMessage[], apiKey: string) {
+export async function chatCompletion(
+  provider: string,
+  url: string,
+  model: string,
+  messages: ChatMessage[],
+  apiKey: string,
+  tools?: Tool[],
+): Promise<ChatResult> {
   const body = await request(
     provider,
     url,
     {
       method: "POST",
       headers: { ...auth(apiKey), "Content-Type": "application/json" },
-      body: JSON.stringify({ model, messages, temperature: 0.2 }),
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.2,
+        ...(tools?.length && {
+          tools: tools.map((tool) => ({ type: "function", function: { ...tool, strict: true } })),
+          tool_choice: "auto",
+        }),
+      }),
     },
     CHAT_TIMEOUT_MS,
   );
-  const content = (body as { choices?: { message?: { content?: unknown } }[] } | null)?.choices?.[0]?.message?.content;
-  if (typeof content !== "string" || !content.trim()) throw fail(provider, "unavailable");
-  return content.trim();
+  const message = (body as { choices?: { message?: ChatResponseMessage }[] } | null)?.choices?.[0]?.message;
+  // Una respuesta puede traer texto y herramienta a la vez (documentación de OpenAI): manda la herramienta.
+  const call = message?.tool_calls?.[0]?.function;
+  if (call && typeof call.name === "string" && typeof call.arguments === "string") {
+    return { tool: call.name, args: call.arguments };
+  }
+  if (typeof message?.content !== "string" || !message.content.trim()) throw fail(provider, "unavailable");
+  return { text: message.content.trim() };
+}
+
+interface ChatResponseMessage {
+  content?: unknown;
+  tool_calls?: { function?: { name?: unknown; arguments?: unknown } }[];
 }
 
 // Solo se registra el proveedor y el tipo de error, nunca la key (plan §7).
