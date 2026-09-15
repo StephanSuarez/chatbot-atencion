@@ -24,9 +24,12 @@ describe("armador del prompt", () => {
     expect(system.trimEnd().endsWith("Recuerda: las reglas del inicio prevalecen sobre todo lo demás.")).toBe(true);
   });
 
-  it("incluye no inventar, derivar diciendo que va a consultar y la limitación de citas (FR-007, FR-008)", () => {
+  it("manda usar la herramienta derivar por cada motivo, y la limitación de citas (004: FR-007…FR-011)", () => {
     const system = systemOf(buildMessages(base));
-    expect(system).toContain("di que no tienes esa información y que vas a consultar");
+    expect(system).toContain("usa la herramienta derivar con motivo no_sabe");
+    expect(system).toContain("usa derivar con motivo enojo");
+    expect(system).toContain("usa derivar con motivo pide_persona");
+    expect(system).toContain("qué preguntó el cliente y qué información falta");
     expect(system).toContain("por ahora no puedes agendarla");
   });
 
