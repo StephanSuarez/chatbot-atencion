@@ -36,7 +36,7 @@ const lastClientAuthor = sql<string | null>`(
   where ${conversationEntries.conversationId} = ${conversations.id}
     and ${conversationEntries.author} in ('cliente', 'bot', 'equipo')
   order by ${conversationEntries.seq} desc limit 1)`;
-const pending = sql<boolean>`(${conversations.mode} = 'humano' and ${lastClientAuthor} = 'cliente')`;
+const pending = sql<boolean>`coalesce(${conversations.mode} = 'humano' and ${lastClientAuthor} = 'cliente', false)`;
 
 const summary = {
   id: conversations.id,
@@ -56,17 +56,14 @@ export async function getConversation(id: unknown) {
   return row ?? null;
 }
 
-/**
- * Guarda un mensaje del cliente. Si la conversación no existe (primera vez o fue borrada) crea una nueva.
- * El id del mensaje lo genera el navegador: reintentar el mismo mensaje no lo duplica.
- */
+// El id del mensaje lo genera el navegador: reintentar el mismo mensaje no lo duplica.
 export async function saveClientMessage(input: { conversationId?: unknown; clientMessageId: string; text: string }) {
   return db.transaction(async (tx) => {
     const existing = isUuid(input.conversationId)
       ? (await tx.select({ id: conversations.id }).from(conversations).where(eq(conversations.id, input.conversationId)))[0]
       : undefined;
-    const conversationId =
-      existing?.id ?? (await tx.insert(conversations).values({ origin: "chat_de_prueba" }).returning({ id: conversations.id }))[0].id;
+    const created = existing ? undefined : (await tx.insert(conversations).values({ origin: "chat_de_prueba" }).returning())[0];
+    const conversationId = existing?.id ?? created!.id;
 
     const [inserted] = await tx
       .insert(conversationEntries)
@@ -77,7 +74,8 @@ export async function saveClientMessage(input: { conversationId?: unknown; clien
       await tx.update(conversations).set({ lastMessageAt: new Date() }).where(eq(conversations.id, conversationId));
       return { conversationId, seq: inserted.seq, duplicate: false };
     }
-    // Reintento: el mensaje ya estaba guardado, quizás en la conversación con la que se envió la primera vez.
+    // Reintento: el mensaje ya estaba guardado, quizás en otra conversación; la recién creada sobra.
+    if (created) await tx.delete(conversations).where(eq(conversations.id, created.id));
     const [previous] = await tx
       .select({ conversationId: conversationEntries.conversationId, seq: conversationEntries.seq })
       .from(conversationEntries)
@@ -140,7 +138,6 @@ export async function setMode(conversationId: unknown, mode: Mode): Promise<bool
   });
 }
 
-/** Respuesta del equipo: solo en modo humano (FR-017). */
 export async function saveTeamReply(conversationId: unknown, text: string): Promise<boolean> {
   if (!isUuid(conversationId)) return false;
   return db.transaction(async (tx) => {
@@ -156,7 +153,6 @@ export async function saveTeamReply(conversationId: unknown, text: string): Prom
   });
 }
 
-/** Entradas en orden. `after` trae solo las nuevas (consulta cada 3 s). `forClient` deja fuera notas y eventos. */
 export async function getEntries(conversationId: unknown, opts: { after?: number; forClient: boolean }): Promise<Entry[] | null> {
   if (!isUuid(conversationId)) return null;
   const [exists] = await db.select({ id: conversations.id }).from(conversations).where(eq(conversations.id, conversationId));
@@ -195,7 +191,6 @@ export async function countPending(): Promise<number> {
   return row.n;
 }
 
-/** Borra una conversación y sus entradas (FR-006). Una pendiente no se puede borrar. */
 export async function deleteConversation(id: unknown): Promise<boolean> {
   if (!isUuid(id)) return false;
   const deleted = await db

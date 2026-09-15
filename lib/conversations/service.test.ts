@@ -54,6 +54,14 @@ describe("guardar mensajes del cliente (FR-001, FR-002)", () => {
     expect(await authors(first.conversationId)).toEqual(["cliente"]);
   });
 
+  it("un reintento sin id de conversación no deja una conversación vacía", async () => {
+    const clientMessageId = randomUUID();
+    const first = await saveClientMessage({ clientMessageId, text: "hola" });
+    const retry = await saveClientMessage({ clientMessageId, text: "hola" });
+    expect(retry.conversationId).toBe(first.conversationId);
+    expect(await listConversations()).toHaveLength(1);
+  });
+
   it("si la conversación ya no existe (borrada o id inválido) empieza una nueva", async () => {
     const gone = await newMessage("hola");
     await deleteConversation(gone.conversationId);
