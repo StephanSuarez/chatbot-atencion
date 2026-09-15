@@ -8,6 +8,13 @@
       "when": 1789424649710,
       "tag": "0000_brainy_stick",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789447353115,
+      "tag": "0001_kb_pgvector",
+      "breakpoints": true
     }
   ]
 }
