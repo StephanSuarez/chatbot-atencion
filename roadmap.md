@@ -9,8 +9,8 @@ Objetivo: una plataforma con un único chatbot para una única empresa, que cual
 | ID  | Feature | Objetivo | Depende de | Estado |
 |-----|---------|----------|------------|--------|
 | 001 | Configuración del chatbot | Editar la única configuración del chatbot: nombre de la empresa, prompt de comportamiento (con uno por defecto) y proveedor de LLM, modelo y API key | — | Terminada (Jira KAN-1, 2026-09-14) |
-| 002 | Base de conocimiento (RAG) | Cargar información de la empresa como texto escrito o documentos en la configuración | 001 | En ejecución (Jira KAN-10) |
-| 003 | Chat de prueba | Chat dentro de la app, abierto a todos, que conversa con el chatbot y responde solo con su información (sin inventar) | 001, 002 | Pendiente |
+| 002 | Base de conocimiento (RAG) | Cargar información de la empresa como texto escrito o documentos en la configuración | 001 | Terminada (Jira KAN-10, 2026-09-15) |
+| 003 | Chat de prueba | Chat dentro de la app, abierto a todos, que conversa con el chatbot y responde solo con su información (sin inventar) | 001, 002 | En ejecución (Jira KAN-18) |
 | 004 | Derivación a humano | Detectar cuándo derivar (no sabe, cliente enojado, pedido reiterado de una persona), avisar al usuario, notificar en la plataforma y permitir que una persona responda desde ahí | 003 | Pendiente |
 | 005 | Aprendizaje desde respuestas humanas | Que lo que responde la persona en una derivación alimente la base de conocimiento del bot | 002, 004 | Pendiente |
 | 006 | Agendamiento con Google | Conectar una cuenta de Google en la configuración y permitir que el bot agende citas | 001, 003 | Pendiente |
