@@ -1,4 +1,4 @@
-import { EMBEDDING_MODEL, embeddings, getJson, modelsFrom } from "./http";
+import { chatCompletion, EMBEDDING_MODEL, embeddings, getJson, modelsFrom } from "./http";
 import type { Provider } from "./index";
 
 export const openrouter: Provider = {
@@ -20,5 +20,8 @@ export const openrouter: Provider = {
   },
   async embed(texts, apiKey) {
     return embeddings("openrouter", "https://openrouter.ai/api/v1/embeddings", `openai/${EMBEDDING_MODEL}`, texts, apiKey);
+  },
+  async chat(messages, model, apiKey) {
+    return chatCompletion("openrouter", "https://openrouter.ai/api/v1/chat/completions", model, messages, apiKey);
   },
 };

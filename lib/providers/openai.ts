@@ -1,4 +1,4 @@
-import { EMBEDDING_MODEL, embeddings, getJson, modelsFrom } from "./http";
+import { chatCompletion, EMBEDDING_MODEL, embeddings, getJson, modelsFrom } from "./http";
 import type { Provider } from "./index";
 
 const MODELS_URL = "https://api.openai.com/v1/models";
@@ -22,5 +22,8 @@ export const openai: Provider = {
   },
   async embed(texts, apiKey) {
     return embeddings("openai", "https://api.openai.com/v1/embeddings", EMBEDDING_MODEL, texts, apiKey);
+  },
+  async chat(messages, model, apiKey) {
+    return chatCompletion("openai", "https://api.openai.com/v1/chat/completions", model, messages, apiKey);
   },
 };
