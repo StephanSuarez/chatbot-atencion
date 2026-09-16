@@ -16,7 +16,9 @@ import {
 } from "drizzle-orm/pg-core";
 
 // Drizzle 0.45 no trae un tipo para bytes: se declara a mano. El driver los devuelve como Buffer.
-const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
+// El genérico se fija a ArrayBuffer porque es lo que `fromDriver` construye de verdad; con el genérico
+// por defecto (que admite memoria compartida) los bytes no se aceptan como cuerpo de una respuesta HTTP.
+const bytea = customType<{ data: Uint8Array<ArrayBuffer>; driverData: Buffer }>({
   dataType: () => "bytea",
   fromDriver: (value) => new Uint8Array(value),
 });
