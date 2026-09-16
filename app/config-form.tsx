@@ -2,13 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { FieldErrors, PublicConfig } from "../lib/config-service";
+import type { GoogleConnection } from "../lib/google/config";
+import { call } from "./call";
 import { loadModelsAction, saveAction } from "./actions";
+import { disconnectGoogleAction, saveAgendaAction, startGoogleConnectionAction } from "./google-actions";
 import s from "./config.module.css";
 import { Tabs } from "./tabs";
 
 interface Props {
   initial: PublicConfig;
   pending: number;
+  google: GoogleConnection | null;
   providers: { id: string; name: string }[];
   rules: string[];
   defaultPrompt: string;
@@ -23,7 +27,28 @@ const KEY_HELP_URL: Record<string, string> = {
 export const thousands = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 export const joinEs = (items: string[]) => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} y ${items.at(-1)}`);
 
-export function ConfigForm({ pending, initial, providers, rules, defaultPrompt, maxPrompt }: Props) {
+const DAY_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
+const DAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const SLOT_OPTIONS = [15, 20, 30, 45, 60, 90, 120];
+const NOTICE_OPTIONS = [0, 1, 2, 4, 12, 24, 48];
+// Con lo que vuelve el callback de Google (app/api/google/callback/route.ts).
+const GOOGLE_RESULTS: Record<string, { text: string; good?: boolean }> = {
+  conectado: { text: "Listo: tu calendario quedó conectado. Ahora define el horario de atención.", good: true },
+  cancelado: { text: "No se conectó ninguna cuenta: cancelaste la autorización en Google." },
+  estado_invalido: { text: "No pudimos verificar la conexión. Vuelve a intentarlo desde este botón." },
+  sin_credenciales: { text: "Faltan las credenciales de Google de la aplicación." },
+  sin_permiso: { text: "Google no concedió el permiso necesario. Vuelve a conectar y acepta el acceso al calendario." },
+  fallo: { text: "Google no respondió. Intenta conectar de nuevo en unos minutos." },
+};
+
+// Lo que dejó el callback en la URL. Se lee al crear el estado, no en un efecto, y se limpia al montar.
+const resultFromUrl = (): { text: string; good?: boolean } | null => {
+  if (typeof window === "undefined") return null;
+  const result = new URLSearchParams(window.location.search).get("google");
+  return result ? (GOOGLE_RESULTS[result] ?? null) : null;
+};
+
+export function ConfigForm({ pending, initial, providers, rules, defaultPrompt, maxPrompt, google }: Props) {
   const [saved, setSaved] = useState(initial);
   const [companyName, setCompanyName] = useState(initial.companyName);
   const [prompt, setPrompt] = useState(initial.prompt);
@@ -39,6 +64,13 @@ export function ConfigForm({ pending, initial, providers, rules, defaultPrompt, 
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(false);
   const restoreDialog = useRef<HTMLDialogElement>(null);
+  // Agendamiento con Google (006): vive en esta misma pantalla, junto al proveedor y la API key.
+  const [agenda, setAgenda] = useState(
+    google?.agenda ?? { days: [1, 2, 3, 4, 5], start: "09:00", end: "17:00", slotMinutes: 30, minNoticeHours: 2 },
+  );
+  const [agendaNotice, setAgendaNotice] = useState<string | null>(null);
+  const [googleResult, setGoogleResult] = useState(resultFromUrl);
+  const [working, setWorking] = useState(false);
 
   const providerName = (id: string | null) => providers.find((p) => p.id === id)?.name ?? "";
   const sameProvider = provider === (saved.provider ?? "");
@@ -113,6 +145,49 @@ export function ConfigForm({ pending, initial, providers, rules, defaultPrompt, 
       {saving ? "Guardando…" : "Guardar"}
     </button>
   );
+
+  // El aviso ya se leyó al crear el estado; aquí solo se limpia la URL para que no reaparezca al recargar.
+  useEffect(() => {
+    if (window.location.search.includes("google=")) window.history.replaceState(null, "", window.location.pathname);
+  }, []);
+
+  async function connectGoogle() {
+    setGoogleResult(null);
+    setWorking(true);
+    const result = await call(() => startGoogleConnectionAction(), {
+      ok: false as const,
+      error: "No pudimos empezar la conexión. Intenta de nuevo.",
+    });
+    if (result.ok) window.location.href = result.url;
+    else {
+      setGoogleResult({ text: result.error });
+      setWorking(false);
+    }
+  }
+
+  async function disconnectGoogle() {
+    setGoogleResult(null);
+    setWorking(true);
+    const result = await call(() => disconnectGoogleAction(), { ok: false, error: "No pudimos desconectar." });
+    setGoogleResult(result.ok ? { text: "Cuenta desconectada. El chatbot dejó de agendar citas.", good: true } : { text: result.error! });
+    setWorking(false);
+  }
+
+  async function saveAgendaSettings() {
+    setAgendaNotice(null);
+    setWorking(true);
+    const result = await call(() => saveAgendaAction(agenda), { ok: false, error: "No pudimos guardar el horario." });
+    setAgendaNotice(result.ok ? "Horario guardado." : result.error!);
+    setWorking(false);
+  }
+
+  const toggleDay = (day: number) =>
+    setAgenda((current) => ({
+      ...current,
+      days: current.days.includes(day) ? current.days.filter((d) => d !== day) : [...current.days, day].sort(),
+    }));
+
+  const agendaState = !google ? "off" : google.agenda ? "on" : "warn";
 
   return (
     <>
@@ -294,6 +369,135 @@ export function ConfigForm({ pending, initial, providers, rules, defaultPrompt, 
             <datalist id="models">{models?.map((m) => <option key={m} value={m} />)}</datalist>
             {errors.model && <FieldError>{errors.model}</FieldError>}
           </div>
+        </section>
+
+        <section className={s.card}>
+          <div className={s.agendaHead}>
+            <h2>Agendamiento de citas</h2>
+            <span
+              className={
+                agendaState === "on"
+                  ? `${s.agendaState} ${s.agendaStateOn}`
+                  : agendaState === "warn"
+                    ? `${s.agendaState} ${s.agendaStateWarn}`
+                    : s.agendaState
+              }
+            >
+              <i className={s.agendaDot} />
+              {agendaState === "on" ? "Activo" : agendaState === "warn" ? "Falta el horario" : "Apagado"}
+            </span>
+          </div>
+
+          {googleResult && (
+            <div className={googleResult.good ? `${s.notice} ${s.noticeOk}` : s.notice} role="status">
+              <span>{googleResult.text}</span>
+            </div>
+          )}
+
+          {google ? (
+            <>
+              <div className={s.account}>
+                <span className={s.accountAvatar}>{google.email.slice(0, 1).toUpperCase()}</span>
+                <span className={s.accountInfo}>
+                  <strong>{google.email}</strong>
+                  <span>Calendario principal</span>
+                </span>
+                <button type="button" className={s.accountAction} onClick={disconnectGoogle} disabled={working}>
+                  Desconectar
+                </button>
+              </div>
+
+              <fieldset className={s.field}>
+                <legend className={s.label}>Días que atiendes</legend>
+                <div className={s.days}>
+                  {DAY_LABELS.map((label, day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      className={agenda.days.includes(day) ? `${s.day} ${s.dayOn}` : s.day}
+                      aria-pressed={agenda.days.includes(day)}
+                      aria-label={DAY_NAMES[day]}
+                      onClick={() => toggleDay(day)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+
+              <div className={s.agendaFields}>
+                <div className={s.field}>
+                  <label htmlFor="agendaStart" className={s.label}>Desde</label>
+                  <input
+                    id="agendaStart"
+                    type="time"
+                    className={s.input}
+                    value={agenda.start}
+                    onChange={(e) => setAgenda({ ...agenda, start: e.target.value })}
+                  />
+                </div>
+                <div className={s.field}>
+                  <label htmlFor="agendaEnd" className={s.label}>Hasta</label>
+                  <input
+                    id="agendaEnd"
+                    type="time"
+                    className={s.input}
+                    value={agenda.end}
+                    onChange={(e) => setAgenda({ ...agenda, end: e.target.value })}
+                  />
+                </div>
+                <div className={s.field}>
+                  <label htmlFor="agendaSlot" className={s.label}>Duración de la cita</label>
+                  <select
+                    id="agendaSlot"
+                    className={s.input}
+                    value={agenda.slotMinutes}
+                    onChange={(e) => setAgenda({ ...agenda, slotMinutes: Number(e.target.value) })}
+                  >
+                    {SLOT_OPTIONS.map((minutes) => (
+                      <option key={minutes} value={minutes}>{minutes} minutos</option>
+                    ))}
+                  </select>
+                </div>
+                <div className={s.field}>
+                  <label htmlFor="agendaNotice" className={s.label}>Aviso mínimo</label>
+                  <select
+                    id="agendaNotice"
+                    className={s.input}
+                    value={agenda.minNoticeHours}
+                    onChange={(e) => setAgenda({ ...agenda, minNoticeHours: Number(e.target.value) })}
+                  >
+                    {NOTICE_OPTIONS.map((hours) => (
+                      <option key={hours} value={hours}>{hours === 0 ? "Sin aviso previo" : `${hours} horas`}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <span className={s.help}>
+                Con un aviso mínimo de {agenda.minNoticeHours} horas, nadie puede pedir una cita para dentro de menos tiempo.
+              </span>
+
+              <div className={s.actions}>
+                <button type="button" className={s.secondary} onClick={saveAgendaSettings} disabled={working}>
+                  {working ? "Guardando…" : "Guardar horario"}
+                </button>
+                {agendaNotice && <span className={s.agendaNotice}>{agendaNotice}</span>}
+              </div>
+            </>
+          ) : (
+            <>
+              <span className={s.help}>
+                Conecta el calendario de tu empresa y el chatbot agendará citas en él. Solo pedimos permiso para ver la
+                disponibilidad y crear eventos; puedes desconectarlo cuando quieras.
+              </span>
+              <div className={s.actions}>
+                <button type="button" className={s.primary} onClick={connectGoogle} disabled={working}>
+                  {working ? "Abriendo Google…" : "Conectar con Google"}
+                </button>
+              </div>
+            </>
+          )}
         </section>
       </div>
 
