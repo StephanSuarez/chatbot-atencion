@@ -6,6 +6,7 @@ import type { ConversationSummary, TypeFilter } from "../../lib/conversations/se
 import { call } from "../call";
 import c from "../config.module.css";
 import { deleteConversationAction } from "./actions";
+import { Detail } from "./detail";
 import s from "./conversaciones.module.css";
 import { PRESET_LABEL, type Preset } from "./range";
 
@@ -19,6 +20,7 @@ interface Filters {
 interface Props {
   conversations: ConversationSummary[];
   filters: Filters;
+  companyName: string;
 }
 
 const TYPE_LABEL: Record<TypeFilter, string> = {
@@ -30,9 +32,10 @@ const TYPE_LABEL: Record<TypeFilter, string> = {
 const PRESETS: Preset[] = ["siempre", "hoy", "ayer", "7dias", "30dias", "personalizada"];
 const when = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
-export function ConversationsView({ conversations, filters }: Props) {
+export function ConversationsView({ conversations, filters, companyName }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string>();
   const [confirm, setConfirm] = useState<ConversationSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [working, startWorking] = useTransition();
@@ -66,7 +69,10 @@ export function ConversationsView({ conversations, filters }: Props) {
       });
       setConfirm(null);
       if (!result.ok) setError(result.error ?? "No se pudo borrar.");
-      else router.refresh();
+      else {
+        if (conversation.id === selected) setSelected(undefined);
+        router.refresh();
+      }
     });
   }
 
@@ -86,6 +92,8 @@ export function ConversationsView({ conversations, filters }: Props) {
       )}
 
       <section className={s.panelWrap}>
+        <div className={s.split}>
+        <div className={selected ? `${s.listSide} ${s.hideOnMobile}` : s.listSide}>
         <div className={s.filters}>
           <label className={c.srOnly} htmlFor="tipo">Tipo de conversación</label>
           <select
@@ -164,8 +172,8 @@ export function ConversationsView({ conversations, filters }: Props) {
         ) : (
           <ul className={s.rows}>
             {conversations.map((conversation) => (
-              <li key={conversation.id} className={s.row}>
-                <div className={s.rowMain}>
+              <li key={conversation.id} className={conversation.id === selected ? `${s.row} ${s.rowOn}` : s.row}>
+                <button type="button" className={s.rowButton} onClick={() => setSelected(conversation.id)}>
                   <div className={s.rowTop}>
                     <span className={s.rowTitle}>Conversación del {when.format(conversation.lastMessageAt)}</span>
                     <div className={s.rowTags}>
@@ -177,7 +185,7 @@ export function ConversationsView({ conversations, filters }: Props) {
                     </div>
                   </div>
                   <span className={s.rowMeta}>Chat de prueba</span>
-                </div>
+                </button>
                 <button
                   type="button"
                   className={s.trash}
@@ -195,6 +203,26 @@ export function ConversationsView({ conversations, filters }: Props) {
             ))}
           </ul>
         )}
+        </div>
+
+        <div className={selected ? s.detail : `${s.detail} ${s.hideOnMobile}`}>
+          {selected ? (
+            <Detail
+              key={selected}
+              id={selected}
+              companyName={companyName}
+              onBack={() => setSelected(undefined)}
+              onGone={() => {
+                setSelected(undefined);
+                router.refresh();
+              }}
+              onChanged={() => router.refresh()}
+            />
+          ) : (
+            <p className={s.pickOne}>Elige una conversación para leerla y responder.</p>
+          )}
+        </div>
+        </div>
       </section>
 
       <dialog ref={confirmRef} className={c.dialog} onClose={() => setConfirm(null)}>
