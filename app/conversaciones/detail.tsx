@@ -11,7 +11,6 @@ import s from "./conversaciones.module.css";
 // Cada 3 s se preguntan los mensajes nuevos del cliente (plan 004 §3). No llama al modelo.
 const POLL_MS = 3000;
 
-const time = new Intl.DateTimeFormat("es-CO", { hour: "numeric", minute: "2-digit" });
 const AUTHOR: Record<string, string> = { cliente: "Cliente", bot: "Bot", equipo: "Equipo" };
 
 interface Props {
@@ -23,7 +22,7 @@ interface Props {
 }
 
 export function Detail({ id, companyName, onBack, onGone, onChanged }: Props) {
-  const [entries, setEntries] = useState<Entry[]>([]);
+  const [entries, setEntries] = useState<(Entry & { when: string })[]>([]);
   const [mode, setMode] = useState<Mode>("ia");
   const [derived, setDerived] = useState(false);
   const [draft, setDraft] = useState("");
@@ -148,7 +147,7 @@ export function Detail({ id, companyName, onBack, onGone, onChanged }: Props) {
             </div>
           ) : entry.author === "evento" ? (
             <div key={entry.seq} className={s.event}>
-              {entry.text} · {time.format(entry.createdAt)}
+              {entry.text} · {entry.when}
             </div>
           ) : (
             <div
@@ -156,7 +155,7 @@ export function Detail({ id, companyName, onBack, onGone, onChanged }: Props) {
               className={entry.author === "cliente" ? s.fromClient : entry.author === "bot" ? s.fromBot : s.fromTeam}
             >
               <span className={s.author}>
-                {entry.author === "equipo" ? `Equipo de ${companyName}` : AUTHOR[entry.author]} · {time.format(entry.createdAt)}
+                {entry.author === "equipo" ? `Equipo de ${companyName}` : AUTHOR[entry.author]} · {entry.when}
               </span>
               {entry.text}
             </div>
