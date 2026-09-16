@@ -500,3 +500,129 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* ---------- Agendamiento con Google (006) ---------- */
+
+.agendaHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.agendaState {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 4px 11px;
+  background: #f3efe8;
+  color: #6f655c;
+  white-space: nowrap;
+}
+
+.agendaStateOn {
+  background: #e8f4ec;
+  color: #2f7a4f;
+}
+
+.agendaStateWarn {
+  background: #fbe9e6;
+  color: #a3261b;
+}
+
+.agendaDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #ece6dd;
+  border-radius: 12px;
+  background: #f7f4ef;
+}
+
+.accountAvatar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #fcf4ef;
+  color: #b5532f;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+
+.accountInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.accountInfo strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.accountInfo span {
+  font-size: 12.5px;
+  color: #6f655c;
+}
+
+.accountAction {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  padding: 8px;
+  font: inherit;
+  font-size: 14px;
+  color: #6f655c;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.days {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.day {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid #ddd5ca;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6f655c;
+  cursor: pointer;
+}
+
+.dayOn {
+  background: #b5532f;
+  border-color: #b5532f;
+  color: #fff;
+}
+
+.agendaFields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+}
+
+.agendaNotice {
+  font-size: 13px;
+  color: #6f655c;
+}
