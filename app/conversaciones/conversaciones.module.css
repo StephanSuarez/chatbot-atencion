@@ -1,0 +1,314 @@
+.panelWrap {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #ece6dd;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* Filtros: el tipo siempre a la vista; la fecha, dentro de «Filtros». */
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0ebe3;
+}
+
+.select {
+  flex-grow: 1;
+  max-width: 280px;
+  border: 1px solid #ddd5ca;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 14px;
+  background: #fff;
+  color: #221c17;
+}
+
+.select:focus-visible {
+  outline: none;
+  border-color: #b5532f;
+  box-shadow: 0 0 0 3px #f6e2d8;
+}
+
+.more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  border-radius: 9px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: #6f655c;
+  cursor: pointer;
+}
+
+.more:hover {
+  background: #f7f4ef;
+}
+
+.moreOn {
+  color: #221c17;
+  font-weight: 600;
+}
+
+.moreOn::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #b5532f;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0ebe3;
+  background: #faf8f4;
+}
+
+.panelHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6f655c;
+}
+
+.clear {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: #6f655c;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  border: 1px solid #ddd5ca;
+  border-radius: 999px;
+  padding: 7px 13px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  color: #221c17;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: #b5532f;
+}
+
+.chipOn {
+  background: #b5532f;
+  border-color: #b5532f;
+  color: #fff;
+  font-weight: 600;
+}
+
+.range {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rangeField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #6f655c;
+}
+
+.date {
+  border: 1px solid #ddd5ca;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 14px;
+  background: #fff;
+  color: #221c17;
+}
+
+/* Lista */
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0ebe3;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row:hover {
+  background: #faf8f4;
+}
+
+.rowMain {
+  flex-grow: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rowTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rowTitle {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.rowMeta {
+  font-size: 13px;
+  color: #6f655c;
+}
+
+.rowTags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tagPend,
+.tagDer,
+.tagIa,
+.tagHuman {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.tagPend {
+  background: #fbe9e6;
+  color: #a3261b;
+}
+
+.tagDer {
+  background: #fbf3dc;
+  color: #7a5a12;
+}
+
+.tagIa {
+  background: #e8f4ec;
+  color: #2f7a4f;
+}
+
+.tagHuman {
+  background: #f6e2d8;
+  color: #8f3f22;
+}
+
+.trash {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: #6f655c;
+  cursor: pointer;
+}
+
+.trash:hover:not(:disabled) {
+  background: #fbe9e6;
+  color: #a3261b;
+}
+
+.trash:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Estados vacíos */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 56px 20px;
+}
+
+.empty h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.empty p {
+  font-size: 15px;
+  color: #6f655c;
+  max-width: 42ch;
+  line-height: 1.5;
+}
+
+.bigIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  background: #fcf4ef;
+  color: #b5532f;
+  display: grid;
+  place-items: center;
+}
+
+.error {
+  background: #fbe9e6;
+  border-color: #f3cfc9;
+  color: #a3261b;
+}
+
+@media (max-width: 900px) {
+  .filters {
+    padding: 12px;
+  }
+
+  .select {
+    max-width: none;
+  }
+
+  .row {
+    padding: 12px;
+  }
+
+  .trash {
+    width: 44px;
+    height: 44px;
+  }
+}

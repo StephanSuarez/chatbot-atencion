@@ -8,6 +8,7 @@ import { Tabs } from "./tabs";
 
 interface Props {
   initial: PublicConfig;
+  pending: number;
   providers: { id: string; name: string }[];
   rules: string[];
   defaultPrompt: string;
@@ -22,7 +23,7 @@ const KEY_HELP_URL: Record<string, string> = {
 export const thousands = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 export const joinEs = (items: string[]) => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} y ${items.at(-1)}`);
 
-export function ConfigForm({ initial, providers, rules, defaultPrompt, maxPrompt }: Props) {
+export function ConfigForm({ pending, initial, providers, rules, defaultPrompt, maxPrompt }: Props) {
   const [saved, setSaved] = useState(initial);
   const [companyName, setCompanyName] = useState(initial.companyName);
   const [prompt, setPrompt] = useState(initial.prompt);
@@ -115,7 +116,7 @@ export function ConfigForm({ initial, providers, rules, defaultPrompt, maxPrompt
 
   return (
     <>
-      <Tabs active="config" />
+      <Tabs active="config" pending={pending} />
       <form
         className={s.page}
         onSubmit={(e) => {

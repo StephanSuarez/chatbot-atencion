@@ -2,13 +2,20 @@ import s from "./tabs.module.css";
 
 // Enlaces normales, no <Link>: con la navegación interna de Next el navegador no avisa de los
 // cambios sin guardar de la configuración (FR-016).
-export function Tabs({ active }: { active: "config" | "conocimiento" | "probar" }) {
+export function Tabs({
+  active,
+  pending = 0,
+}: {
+  active: "config" | "conocimiento" | "probar" | "conversaciones";
+  pending?: number;
+}) {
   return (
     <nav className={s.tabs} aria-label="Secciones">
       {[
         { href: "/", label: "Tu chatbot", key: "config" },
         { href: "/conocimiento", label: "Lo que sabe", key: "conocimiento" },
         { href: "/probar", label: "Probar", key: "probar" },
+        { href: "/conversaciones", label: "Conversaciones", key: "conversaciones" },
       ].map((tab) => (
         <a
           key={tab.key}
@@ -17,6 +24,11 @@ export function Tabs({ active }: { active: "config" | "conocimiento" | "probar" 
           aria-current={tab.key === active ? "page" : undefined}
         >
           {tab.label}
+          {tab.key === "conversaciones" && pending > 0 && (
+            <span className={s.badge} aria-label={`${pending} esperan respuesta`}>
+              {pending}
+            </span>
+          )}
         </a>
       ))}
     </nav>

@@ -339,18 +339,6 @@
   cursor: pointer;
 }
 
-.dangerButton {
-  height: 44px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 10px;
-  background: #a3261b;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
 .mobileBar {
   display: none;
 }
