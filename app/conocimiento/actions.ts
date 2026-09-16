@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { indexPending } from "../../lib/kb/indexer";
+import { approveProposal, discardProposal } from "../../lib/learning/service";
+import { proposeFromConversation } from "../../lib/learning/propose";
 import {
   deleteDocument,
   deleteEntry,
@@ -76,5 +78,52 @@ export async function documentTextAction(id: string): Promise<{ ok: true; text: 
   } catch (e) {
     logError("no se pudo leer el texto del documento", e);
     return { ok: false, error: "No pudimos mostrar el texto. Intenta de nuevo." };
+  }
+}
+
+// ---------- Propuestas de conocimiento (005) ----------
+
+export async function approveProposalAction(input: { id: string; title: string; content: string }): Promise<EntryResult> {
+  const id = str(input?.id);
+  if (!UUID.test(id)) return { ok: false, errors: { form: "Esa propuesta ya no existe." } };
+  try {
+    const result = await approveProposal(id, { title: str(input?.title), content: str(input?.content) });
+    if (!result.ok) return { ok: false, errors: { form: result.error } };
+    revalidatePath(PATH);
+    // Los pedazos de la entrada nueva quedan pendientes: se indexan después de responder.
+    index();
+    return { ok: true, id: result.entryId };
+  } catch (e) {
+    logError("no se pudo aprobar la propuesta", e);
+    return { ok: false, errors: { form: "No pudimos aprobarla. Intenta de nuevo." } };
+  }
+}
+
+export async function discardProposalAction(id: unknown): Promise<{ ok: boolean }> {
+  const proposalId = str(id);
+  if (!UUID.test(proposalId)) return { ok: false };
+  try {
+    const discarded = await discardProposal(proposalId);
+    if (discarded) revalidatePath(PATH);
+    return { ok: discarded };
+  } catch (e) {
+    logError("no se pudo descartar la propuesta", e);
+    return { ok: false };
+  }
+}
+
+/** Reintenta redactar una propuesta que falló: se borra la fallida y se vuelve a pedir (FR-009). */
+export async function retryProposalAction(input: { id: string; conversationId: string }): Promise<{ ok: boolean }> {
+  const id = str(input?.id);
+  const conversationId = str(input?.conversationId);
+  if (!UUID.test(id) || !UUID.test(conversationId)) return { ok: false };
+  try {
+    await discardProposal(id);
+    await proposeFromConversation(conversationId);
+    revalidatePath(PATH);
+    return { ok: true };
+  } catch (e) {
+    logError("no se pudo reintentar la propuesta", e);
+    return { ok: false };
   }
 }

@@ -405,3 +405,109 @@
     padding: 40px 20px;
   }
 }
+
+/* ---------- Por aprobar: lo que el bot aprendió de una conversación (005) ---------- */
+
+.learning {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #eddcb4;
+  border-radius: 14px;
+  background: #fdf8ec;
+}
+
+.learningHead strong {
+  display: block;
+  font-size: 15px;
+  color: #7a5a12;
+}
+
+.learningHead span {
+  display: block;
+  margin-top: 2px;
+}
+
+.proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #ece6dd;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.proposalTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.proposalTitle {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #221c17;
+  text-align: left;
+  cursor: pointer;
+}
+
+.proposalFrom {
+  font-size: 13px;
+  color: #b5532f;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.proposalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.proposalActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.discard {
+  border: 1px solid #ddd5ca;
+  background: none;
+  border-radius: 10px;
+  padding: 0 16px;
+  height: 44px;
+  font: inherit;
+  font-size: 15px;
+  color: #6f655c;
+  cursor: pointer;
+}
+
+.discard:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.proposalFailed {
+  margin: 0;
+  font-size: 14px;
+  color: #a3261b;
+}
+
+.proposalError {
+  background: #fbe9e6;
+  border-color: #f3cfc9;
+  color: #a3261b;
+}
+
+.pillLearned {
+  background: #fbf3dc;
+  color: #7a5a12;
+}

@@ -5,7 +5,16 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import type { DocumentSummary } from "../../lib/kb/service";
 import { call } from "../call";
 import c from "../config.module.css";
-import { deleteItemAction, documentTextAction, saveEntryAction, uploadDocumentAction } from "./actions";
+import type { Proposal } from "../../lib/learning/service";
+import {
+  approveProposalAction,
+  deleteItemAction,
+  discardProposalAction,
+  documentTextAction,
+  retryProposalAction,
+  saveEntryAction,
+  uploadDocumentAction,
+} from "./actions";
 import s from "./knowledge.module.css";
 
 interface Entry {
@@ -13,11 +22,13 @@ interface Entry {
   title: string;
   content: string;
   updatedAt: Date;
+  learnedFromConversationId: string | null;
 }
 
 interface Props {
   entries: Entry[];
   documents: DocumentSummary[];
+  proposals: Proposal[];
   pending: number;
   hasKey: boolean;
   maxDocuments: number;
@@ -40,7 +51,7 @@ type Panel =
   | { kind: "document"; document: DocumentSummary }
   | null;
 
-export function KnowledgeView({ entries, documents, pending, hasKey, maxDocuments, maxFileBytes }: Props) {
+export function KnowledgeView({ entries, documents, proposals, pending, hasKey, maxDocuments, maxFileBytes }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirm, setConfirm] = useState<{ kind: "entry" | "document"; id: string; name: string } | null>(null);
@@ -48,6 +59,9 @@ export function KnowledgeView({ entries, documents, pending, hasKey, maxDocument
   const [errors, setErrors] = useState<{ title?: string; content?: string; form?: string }>({});
   const [docText, setDocText] = useState<{ loading: boolean; text: string | null; error?: string }>({ loading: false, text: null });
   const [uploading, setUploading] = useState<string | null>(null);
+  // Lo que el bot propuso aprender: se revisa y se edita aquí mismo antes de aprobarlo (005).
+  const [reviewing, setReviewing] = useState<string | null>(proposals[0]?.id ?? null);
+  const [proposalError, setProposalError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
   const panelRef = useRef<HTMLDialogElement>(null);
   const confirmRef = useRef<HTMLDialogElement>(null);
@@ -132,6 +146,40 @@ export function KnowledgeView({ entries, documents, pending, hasKey, maxDocument
       } else {
         setErrors(result.errors);
       }
+    });
+  }
+
+  function approveProposal(proposal: Proposal, form: HTMLFormElement) {
+    const data = new FormData(form);
+    setProposalError(null);
+    startSaving(async () => {
+      const result = await call(
+        () =>
+          approveProposalAction({
+            id: proposal.id,
+            title: String(data.get("title") ?? ""),
+            content: String(data.get("content") ?? ""),
+          }),
+        { ok: false, errors: { form: "No pudimos guardarla. Intenta de nuevo." } } as const,
+      );
+      if (!result.ok) setProposalError(result.errors.form ?? "No pudimos guardarla.");
+    });
+  }
+
+  function discardProposal(proposal: Proposal) {
+    setProposalError(null);
+    startSaving(async () => {
+      await call(() => discardProposalAction(proposal.id), { ok: false });
+    });
+  }
+
+  function retryProposal(proposal: Proposal) {
+    setProposalError(null);
+    startSaving(async () => {
+      const result = await call(() => retryProposalAction({ id: proposal.id, conversationId: proposal.conversationId }), {
+        ok: false,
+      });
+      if (!result.ok) setProposalError("No pudimos reintentarlo. Intenta de nuevo.");
     });
   }
 
@@ -222,6 +270,86 @@ export function KnowledgeView({ entries, documents, pending, hasKey, maxDocument
         </div>
       )}
 
+      {proposals.length > 0 && (
+        <section className={s.learning}>
+          <div className={s.learningHead}>
+            <div>
+              <strong>
+                {proposals.length === 1 ? "1 cosa por aprobar" : `${proposals.length} cosas por aprobar`}
+              </strong>
+              <span className={c.help}>
+                Esto lo aprendió tu chatbot atendiendo conversaciones. Revísalo antes de que lo use.
+              </span>
+            </div>
+          </div>
+
+          {proposalError && (
+            <div className={`${c.notice} ${s.proposalError}`} role="alert">
+              <span>{proposalError}</span>
+            </div>
+          )}
+
+          {proposals.map((proposal) => (
+            <div key={proposal.id} className={s.proposal}>
+              <div className={s.proposalTop}>
+                <button
+                  type="button"
+                  className={s.proposalTitle}
+                  aria-expanded={reviewing === proposal.id}
+                  onClick={() => setReviewing(reviewing === proposal.id ? null : proposal.id)}
+                >
+                  {proposal.title ?? "No se pudo redactar"}
+                </button>
+                <a className={s.proposalFrom} href={`/conversaciones`}>
+                  Ver conversación
+                </a>
+              </div>
+
+              {proposal.error ? (
+                <>
+                  <p className={s.proposalFailed}>{proposal.error}</p>
+                  <div className={s.proposalActions}>
+                    <button type="button" className={c.secondary} onClick={() => retryProposal(proposal)} disabled={saving}>
+                      Reintentar
+                    </button>
+                    <button type="button" className={s.discard} onClick={() => discardProposal(proposal)} disabled={saving}>
+                      Descartar
+                    </button>
+                  </div>
+                </>
+              ) : (
+                reviewing === proposal.id && (
+                  <form
+                    className={s.proposalForm}
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      approveProposal(proposal, e.currentTarget);
+                    }}
+                  >
+                    <label className={c.field}>
+                      <span className={c.label}>Título</span>
+                      <input name="title" className={c.input} defaultValue={proposal.title ?? ""} maxLength={200} />
+                    </label>
+                    <label className={c.field}>
+                      <span className={c.label}>Contenido</span>
+                      <textarea name="content" className={c.textarea} rows={4} defaultValue={proposal.content ?? ""} />
+                    </label>
+                    <div className={s.proposalActions}>
+                      <button type="submit" className={c.primary} disabled={saving}>
+                        {saving ? "Guardando…" : "Aprobar y guardar"}
+                      </button>
+                      <button type="button" className={s.discard} onClick={() => discardProposal(proposal)} disabled={saving}>
+                        Descartar
+                      </button>
+                    </div>
+                  </form>
+                )
+              )}
+            </div>
+          ))}
+        </section>
+      )}
+
       {isEmpty ? (
         <section className={s.empty}>
           <span className={s.emptyIcon}><BookIcon /></span>
@@ -246,6 +374,7 @@ export function KnowledgeView({ entries, documents, pending, hasKey, maxDocument
               icon={<TextIcon />}
               title={entry.title}
               meta={`Texto · actualizado el ${day.format(entry.updatedAt)}`}
+              status={entry.learnedFromConversationId ? { label: "Aprendida", className: s.pillLearned } : undefined}
               onClick={() => openEntry(entry)}
             />
           ))}
