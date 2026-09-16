@@ -613,3 +613,26 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Los campos llevan etiqueta encima: se alinean por abajo para que el botón quede a la altura. */
+.questionForm {
+  align-items: end;
+}
+
+.formActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.questionOn {
+  border-color: #d9a48a;
+  background: #fdf6f2;
+}
+
+.reportPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 320px;
+}
