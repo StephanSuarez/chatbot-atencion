@@ -67,7 +67,9 @@ export function Detail({ id, companyName, onBack, onGone, onChanged }: Props) {
     const tick = () => {
       if (!busy.current && document.visibilityState === "visible") void pull();
     };
-    tick();
+    // La primera carga va siempre, como en el chat (KAN-32): si se condiciona a que la pestaña esté
+    // visible, abrir el detalle en segundo plano deja la conversación vacía y con el modo equivocado.
+    void pull();
     const timer = setInterval(tick, POLL_MS);
     document.addEventListener("visibilitychange", tick);
     return () => {
