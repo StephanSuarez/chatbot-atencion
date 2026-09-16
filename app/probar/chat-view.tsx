@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { ACCEPTED_EXTENSIONS, MAX_FILE_BYTES } from "../../lib/attachments/validate";
 import type { FoundChunk } from "../../lib/chat/retrieve";
 import type { Entry } from "../../lib/conversations/service";
 import { call } from "../call";
@@ -15,6 +16,14 @@ const MAX_MESSAGE = 1000;
 const POLL_MS = 3000;
 const STORAGE_KEY = "chatbot.conversacion";
 
+/** Lo que hace falta para mostrar un adjunto, venga del servidor o del archivo recién elegido. */
+interface Adjunto {
+  name: string;
+  category: string;
+  sizeBytes: number;
+  url: string;
+}
+
 interface Message {
   role: "user" | "assistant";
   author?: Entry["author"];
@@ -23,6 +32,9 @@ interface Message {
   failed?: string;
   // El mismo id al reintentar: el servidor no guarda el mensaje dos veces (004, FR-012).
   clientMessageId?: string;
+  adjunto?: Adjunto;
+  // El archivo original se guarda para poder reintentar el envío sin volver a elegirlo (010, FR-014).
+  file?: File;
 }
 
 // Los pedazos llegan con su encabezado de origen («[menu.txt]»); el origen ya se muestra aparte.
@@ -32,7 +44,27 @@ const fromEntry = (entry: Entry): Message => ({
   role: entry.author === "cliente" ? "user" : "assistant",
   author: entry.author,
   content: entry.text,
+  adjunto: entry.attachment && {
+    name: entry.attachment.name,
+    category: entry.attachment.category,
+    sizeBytes: entry.attachment.sizeBytes,
+    url: `/api/adjuntos/${entry.attachment.id}`,
+  },
 });
+
+// El mensaje recién enviado todavía no existe en el servidor, así que se muestra desde el archivo local.
+// ponytail: la URL creada vive lo que dure la página; se liberan todas al empezar otra conversación.
+const localAdjunto = (file: File): Adjunto => ({
+  name: file.name,
+  category: file.type.startsWith("image/") ? "imagen" : file.type.startsWith("audio/") ? "audio" : "documento",
+  sizeBytes: file.size,
+  url: URL.createObjectURL(file),
+});
+
+const peso = (bytes: number) =>
+  bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+const extension = (name: string) => (name.split(".").pop() ?? "").toUpperCase().slice(0, 4);
 
 // Lo guardado solo existe en el navegador: en el servidor no hay localStorage y se empieza sin conversación.
 const stored = (): string | undefined => {
@@ -59,6 +91,12 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
   const [draft, setDraft] = useState("");
   const [openSources, setOpenSources] = useState<Set<number>>(new Set());
   const [pendingInfo, setPendingInfo] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  // Una sola URL por archivo elegido: crearla dentro del render la recrearía en cada pintado y todas
+  // quedarían colgando. ponytail: se libera al empezar otra conversación, no en cada cambio de archivo.
+  const filePreview = useMemo(() => (file?.type.startsWith("image/") ? URL.createObjectURL(file) : null), [file]);
   const [blocked, setBlocked] = useState<string[] | null>(ready ? null : missing);
   const [sending, startSending] = useTransition();
   const endRef = useRef<HTMLDivElement>(null);
@@ -112,12 +150,25 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
 
   const tooLong = draft.length > MAX_MESSAGE;
 
-  function send(text: string, before: Message[], retryId?: string) {
+  function send(text: string, before: Message[], attached: File | null, retryId?: string) {
     const clientMessageId = retryId ?? crypto.randomUUID();
-    setMessages([...before, { role: "user", content: text, clientMessageId }]);
+    const mine: Message = {
+      role: "user",
+      content: text,
+      clientMessageId,
+      ...(attached && { file: attached, adjunto: localAdjunto(attached) }),
+    };
+    setMessages([...before, mine]);
     busy.current = true;
     startSending(async () => {
-      const result = await call(() => sendMessageAction({ conversationId, clientMessageId, message: text }), {
+      // El archivo obliga a FormData, igual que la subida de documentos (002).
+      const form = new FormData();
+      if (conversationId) form.set("conversationId", conversationId);
+      form.set("clientMessageId", clientMessageId);
+      form.set("message", text);
+      if (attached) form.set("file", attached);
+
+      const result = await call(() => sendMessageAction(form), {
         ok: false as const,
         error: "No pudimos contactar al servidor. Revisa tu conexión e intenta de nuevo.",
       });
@@ -130,8 +181,9 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
           ...fromEntry(entry),
           ...(i === 0 && entry.author === "bot" && { sources: result.sources }),
         }));
-        setMessages([...before, { role: "user", content: text, clientMessageId }, ...replies]);
+        setMessages([...before, mine, ...replies]);
         setPendingInfo(result.pendingInfo);
+        setFile(null);
       } else if ("missing" in result && result.missing) {
         setBlocked(result.missing);
       } else {
@@ -139,7 +191,8 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
           setConversationId(result.conversationId);
           remember(result.conversationId);
         }
-        setMessages([...before, { role: "user", content: text, failed: result.error, clientMessageId }]);
+        // El archivo sigue elegido: reintentar no obliga a buscarlo otra vez (FR-014).
+        setMessages([...before, { ...mine, failed: result.error }]);
       }
       busy.current = false;
     });
@@ -147,9 +200,21 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
 
   function submit() {
     const text = draft.trim();
-    if (!text || tooLong || sending) return;
+    // Con un archivo elegido se puede enviar sin escribir nada (FR-001).
+    if ((!text && !file) || tooLong || sending) return;
     setDraft("");
-    send(text, messages);
+    setFileError(null);
+    send(text, messages, file);
+  }
+
+  function choose(chosen: File | null) {
+    setFileError(null);
+    if (!chosen) return;
+    if (chosen.size > MAX_FILE_BYTES) {
+      setFileError(`“${chosen.name}” pesa más de 4 MB.`);
+      return;
+    }
+    setFile(chosen);
   }
 
   function newConversation() {
@@ -157,10 +222,13 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
     setConversationId(undefined);
     setMode("ia");
     lastSeq.current = 0;
+    for (const message of messages) if (message.file && message.adjunto) URL.revokeObjectURL(message.adjunto.url);
     setMessages([]);
     setOpenSources(new Set());
     setDraft("");
     setPendingInfo(false);
+    setFile(null);
+    setFileError(null);
   }
 
   function toggleSources(index: number) {
@@ -219,7 +287,10 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
             messages.map((message, index) =>
               message.role === "user" ? (
                 <div key={index} className={s.userTurn}>
-                  <div className={s.me}>{message.content}</div>
+                  <div className={message.adjunto && !message.content ? `${s.me} ${s.onlyFile}` : s.me}>
+                    {message.adjunto && <Adjunto adjunto={message.adjunto} conTexto={!!message.content} />}
+                    {message.content}
+                  </div>
                   {message.failed && (
                     <>
                       <span className={s.failed}>
@@ -230,7 +301,9 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
                             <button
                               type="button"
                               className={s.retry}
-                              onClick={() => send(message.content, messages.slice(0, index), message.clientMessageId)}
+                              onClick={() =>
+                                send(message.content, messages.slice(0, index), message.file ?? null, message.clientMessageId)
+                              }
                             >
                               Reintentar
                             </button>
@@ -247,6 +320,7 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
                     <span className={s.teamLabel}>
                       <i className={s.teamDot} /> Equipo de {companyName}
                     </span>
+                    {message.adjunto && <Adjunto adjunto={message.adjunto} conTexto={!!message.content} />}
                     {message.content}
                   </div>
                 </div>
@@ -306,6 +380,34 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
           </p>
         )}
 
+        {fileError && (
+          <div className={`${c.notice} ${s.error}`} role="alert">
+            <span>{fileError}</span>
+          </div>
+        )}
+
+        {file && (
+          <div className={sending ? `${s.chip} ${s.chipSending}` : s.chip}>
+            {filePreview ? (
+              // eslint-disable-next-line @next/next/no-img-element -- next/image no admite URLs blob:
+              <img className={s.chipThumb} src={filePreview} alt="" />
+            ) : (
+              <span className={s.docIcon}>{extension(file.name)}</span>
+            )}
+            <span className={s.chipName}>{file.name}</span>
+            <span className={s.chipSize}>{peso(file.size)}</span>
+            <button
+              type="button"
+              className={s.chipRemove}
+              aria-label={`Quitar ${file.name}`}
+              disabled={sending}
+              onClick={() => setFile(null)}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         <form
           className={s.composer}
           onSubmit={(e) => {
@@ -313,6 +415,26 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
             submit();
           }}
         >
+          <input
+            ref={fileInput}
+            type="file"
+            className={c.srOnly}
+            accept={ACCEPTED_EXTENSIONS.join(",")}
+            onChange={(e) => {
+              choose(e.target.files?.[0] ?? null);
+              // Se limpia para poder volver a elegir el mismo archivo después de quitarlo.
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            className={s.attach}
+            aria-label="Adjuntar un archivo"
+            disabled={!!blocked || sending}
+            onClick={() => fileInput.current?.click()}
+          >
+            <ClipIcon />
+          </button>
           <div className={s.fieldWrap}>
             <label htmlFor="message" className={c.srOnly}>Mensaje</label>
             <textarea
@@ -346,7 +468,7 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
             type="submit"
             className={`${c.primary} ${s.send}`}
             aria-label="Enviar"
-            disabled={!!blocked || sending || tooLong || !draft.trim()}
+            disabled={!!blocked || sending || tooLong || (!draft.trim() && !file)}
           >
             <SendIcon />
           </button>
@@ -356,7 +478,40 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
   );
 }
 
+/** La imagen se ve, el audio se escucha y el documento se descarga con su nombre (FR-007, FR-008). */
+function Adjunto({ adjunto, conTexto }: { adjunto: Adjunto; conTexto: boolean }) {
+  if (adjunto.category === "imagen") {
+    // Es un archivo del cliente servido por nuestra propia ruta, no un recurso del sitio, y la vista previa
+    // local llega como URL blob:, que next/image no admite.
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img className={conTexto ? `${s.adjImage} ${s.withText}` : s.adjImage} src={adjunto.url} alt={adjunto.name} />;
+  }
+  if (adjunto.category === "audio") {
+    return <audio className={conTexto ? `${s.adjAudio} ${s.withText}` : s.adjAudio} controls src={adjunto.url} />;
+  }
+  return (
+    <a
+      className={conTexto ? `${s.adjDoc} ${s.withText}` : s.adjDoc}
+      href={adjunto.url}
+      download={adjunto.name}
+      title={adjunto.name}
+    >
+      <span className={s.docIcon}>{extension(adjunto.name)}</span>
+      <span className={s.docText}>
+        <b>{adjunto.name}</b>
+        <span>{peso(adjunto.sizeBytes)}</span>
+      </span>
+    </a>
+  );
+}
+
 const icon = { width: 16, height: 16, viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", "aria-hidden": true } as const;
+
+const ClipIcon = () => (
+  <svg {...icon} width={18} height={18} strokeWidth={1.5} strokeLinecap="round">
+    <path d="M13.5 7.5 8.2 12.8a3 3 0 0 1-4.3-4.3l5.4-5.3a2 2 0 0 1 2.8 2.8l-5.4 5.4a1 1 0 0 1-1.4-1.4l5-5" />
+  </svg>
+);
 
 const SendIcon = () => (
   <svg {...icon} width={18} height={18} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
