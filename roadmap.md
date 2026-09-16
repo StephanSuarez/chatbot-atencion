@@ -17,7 +17,7 @@ Objetivo: una plataforma con un único chatbot para una única empresa, que cual
 | 007 | Canal WhatsApp | Conectar la cuenta de Meta/WhatsApp de la empresa para que el chatbot atienda por ese número | 003, 004, 006 | Pendiente |
 | 008 | Métricas de conversaciones | Ver cuántas conversaciones resolvió el bot frente a las derivadas, y cuáles son las preguntas más frecuentes | 004 | Implementada (Jira KAN-48, 2026-09-15); pendiente de validación del usuario |
 | 009 | Simulaciones del chatbot | Correr conversaciones simuladas para evaluar al bot; se guardan con origen «Simulación» | 004 | Implementada (Jira KAN-51, 2026-09-15); pendiente de validación del usuario, incluida una corrida real (consume saldo de la API key) |
-| 010 | Mensajes multimedia | Audios, imágenes y documentos en las conversaciones, como en WhatsApp | 004 | Pendiente |
+| 010 | Mensajes multimedia | Audios, imágenes y documentos en las conversaciones, como en WhatsApp | 004 | En ejecución (spec y plan aprobados por delegación 2026-09-15) |
 
 ## Notas de alcance
 
