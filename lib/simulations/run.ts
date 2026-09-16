@@ -17,9 +17,15 @@ import {
 export const PAUSE_MS = 3000;
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export type StartResult = { ok: true; id: string; total: number } | { ok: false; error: string };
+export type StartResult =
+  | { ok: true; id: string; total: number; questions: Question[] }
+  | { ok: false; error: string };
 
-/** Crea la simulación y devuelve su id. La ejecución en sí va aparte, en segundo plano. */
+/**
+ * Crea la simulación y devuelve su id junto con las preguntas que se van a enviar. La ejecución en sí
+ * va aparte, en segundo plano. Devuelve las preguntas ya leídas, y no se vuelven a consultar: si entre
+ * las dos lecturas se agregara o borrara una, el total guardado no coincidiría con lo que se ejecuta.
+ */
 export async function startSimulation(): Promise<StartResult> {
   if (await runningSimulation()) return { ok: false, error: "Ya hay una simulación en curso. Espera a que termine." };
 
@@ -27,7 +33,7 @@ export async function startSimulation(): Promise<StartResult> {
   if (!questions.length) return { ok: false, error: "Agrega al menos una pregunta de prueba." };
 
   const id = await createSimulation(questions.length);
-  return { ok: true, id, total: questions.length };
+  return { ok: true, id, total: questions.length, questions };
 }
 
 /** Recorre las preguntas, una conversación por cada una, y guarda el resultado de todas. */

@@ -62,6 +62,18 @@ describe("empezar una simulación (FR-012)", () => {
     expect(started).toMatchObject({ ok: true, total: 2 });
   });
 
+  // Las preguntas viajan con el resultado: si se leyeran otra vez al ejecutar, el total guardado
+  // podría no coincidir con las que se envían.
+  it("devuelve las mismas preguntas que contó", async () => {
+    await saveQuestion({ text: "¿A qué hora abren?", expectation: "responde" });
+    await saveQuestion({ text: "¿Tienen wifi?", expectation: "deriva" });
+
+    const started = await startSimulation();
+    if (!started.ok) throw new Error(started.error);
+    expect(started.questions.map((question) => question.text)).toEqual(["¿A qué hora abren?", "¿Tienen wifi?"]);
+    expect(started.questions).toHaveLength(started.total);
+  });
+
   it("no se permiten dos simulaciones a la vez", async () => {
     await saveQuestion({ text: "¿A qué hora abren?", expectation: "responde" });
     await createSimulation(1);
