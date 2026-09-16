@@ -90,7 +90,12 @@ export async function saveClientMessage(input: { conversationId?: unknown; clien
  */
 export async function saveBotTurn(
   conversationId: string,
-  turn: { entries: { author: "bot" | "nota" | "evento"; text: string }[]; toHuman?: boolean; personRequests?: number },
+  turn: {
+    entries: { author: "bot" | "nota" | "evento"; text: string }[];
+    toHuman?: boolean;
+    personRequests?: number;
+    handoffReason?: "no_sabe" | "enojo" | "pide_persona";
+  },
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
     const [row] = await tx
@@ -105,7 +110,7 @@ export async function saveBotTurn(
       .update(conversations)
       .set({
         ...(turn.entries.some((e) => e.author === "bot") && { lastMessageAt: new Date() }),
-        ...(turn.toHuman && { mode: "humano" as const, derived: true }),
+        ...(turn.toHuman && { mode: "humano" as const, derived: true, handoffReason: turn.handoffReason }),
         ...(turn.personRequests !== undefined && { personRequests: turn.personRequests }),
       })
       .where(eq(conversations.id, conversationId));
