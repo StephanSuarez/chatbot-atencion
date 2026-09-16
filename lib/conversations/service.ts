@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gt, gte, inArray, lt, sql, type SQL } from "drizzle-orm";
 import { db } from "../db";
+import type { Category } from "../attachments/validate";
 import { conversationAttachments, conversationEntries, conversations } from "../schema";
 
 // Reglas de guardado de la spec 004 (plan §5, §6). No llama al modelo: eso lo hace el servicio de chat.
@@ -11,7 +12,9 @@ export type TypeFilter = "todas" | "derivadas" | "sin_derivar";
 // Lo que ve el cliente. Notas y eventos son solo para el equipo (FR-012, FR-016).
 export const CLIENT_AUTHORS: Author[] = ["cliente", "bot", "equipo"];
 
-export type Category = "imagen" | "audio" | "documento";
+// La categoría la decide el validador (`lib/attachments`): se reexporta para no tener dos uniones que
+// puedan divergir en silencio.
+export type { Category };
 
 /** La ficha del adjunto: lo que viaja con los mensajes. Los bytes se piden aparte, por su id. */
 export interface Attachment {
