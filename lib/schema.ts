@@ -23,6 +23,9 @@ const bytea = customType<{ data: Uint8Array<ArrayBuffer>; driverData: Buffer }>(
   fromDriver: (value) => new Uint8Array(value),
 });
 
+// Todas las tablas llevan RLS sin políticas: en Supabase quedan cerradas a su Data API, que la app no usa.
+// La app se conecta como `postgres`, que salta RLS (rolbypassrls, verificado en Supabase el 2026-09-16).
+
 // Única configuración del chatbot (FR-001): la base garantiza una sola fila (id siempre true).
 export const chatbotConfig = pgTable(
   "chatbot_config",
@@ -48,7 +51,7 @@ export const chatbotConfig = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   () => [check("chatbot_config_single_row", sql`id = true`)],
-);
+).enableRLS();
 
 // Base de conocimiento (002). Todo pertenece a la única configuración, así que no hay FK a chatbot_config.
 export const kbEntries = pgTable("kb_entries", {
@@ -61,7 +64,7 @@ export const kbEntries = pgTable("kb_entries", {
   }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 export const kbDocuments = pgTable(
   "kb_documents",
@@ -75,7 +78,7 @@ export const kbDocuments = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [check("kb_documents_status", sql`${t.status} in ('procesando', 'listo', 'no_se_pudo_leer')`)],
-);
+).enableRLS();
 
 // text-embedding-3-small (plan 002 §4). Cambiar de modelo = cambiar esta dimensión y reindexar.
 export const EMBEDDING_DIMENSIONS = 1536;
@@ -93,7 +96,7 @@ export const kbChunks = pgTable(
     embeddingModel: text("embedding_model"),
   },
   (t) => [check("kb_chunks_one_source", sql`num_nonnulls(${t.entryId}, ${t.documentId}) = 1`)],
-);
+).enableRLS();
 
 // Conversaciones (004). Se guardan todas, con su origen; WhatsApp (007) y simulación (009) amplían el check.
 export const conversations = pgTable(
@@ -115,7 +118,7 @@ export const conversations = pgTable(
     check("conversations_origin", sql`${t.origin} in ('chat_de_prueba', 'simulacion')`),
     check("conversations_mode", sql`${t.mode} in ('ia', 'humano')`),
   ],
-);
+).enableRLS();
 
 // Una sola línea de tiempo: mensajes, notas del bot y cambios de modo (plan §6).
 export const conversationEntries = pgTable(
@@ -135,7 +138,7 @@ export const conversationEntries = pgTable(
     check("conversation_entries_author", sql`${t.author} in ('cliente', 'bot', 'equipo', 'nota', 'evento')`),
     index("conversation_entries_conversation").on(t.conversationId, t.seq),
   ],
-);
+).enableRLS();
 
 /**
  * Adjunto de un mensaje (010). En tabla aparte y no como columnas de `conversation_entries` porque esas
@@ -161,7 +164,7 @@ export const conversationAttachments = pgTable(
   (t) => [
     check("conversation_attachments_category", sql`${t.category} in ('imagen', 'audio', 'documento')`),
   ],
-);
+).enableRLS();
 
 // Propuestas de conocimiento (005): lo que el bot podría aprender de una conversación atendida por el
 // equipo. Solo entran en la base de conocimiento cuando una persona las aprueba.
@@ -186,7 +189,7 @@ export const knowledgeProposals = pgTable(
       .on(t.conversationId)
       .where(sql`${t.status} = 'pendiente'`),
   ],
-);
+).enableRLS();
 
 // Simulaciones (009): preguntas de prueba, ejecuciones y sus resultados.
 export const simulationQuestions = pgTable(
@@ -198,7 +201,7 @@ export const simulationQuestions = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [check("simulation_questions_expectation", sql`${t.expectation} in ('responde', 'deriva', 'ninguna')`)],
-);
+).enableRLS();
 
 export const simulations = pgTable(
   "simulations",
@@ -211,7 +214,7 @@ export const simulations = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [check("simulations_status", sql`${t.status} in ('en_curso', 'terminada', 'interrumpida')`)],
-);
+).enableRLS();
 
 export const simulationResults = pgTable("simulation_results", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -227,4 +230,4 @@ export const simulationResults = pgTable("simulation_results", {
   error: text("error"),
   conversationId: uuid("conversation_id").references(() => conversations.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
