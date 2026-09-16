@@ -23,6 +23,28 @@ const indexPending = vi.hoisted(() => vi.fn(async () => 0));
 vi.mock("../kb/indexer", () => ({ indexPending }));
 vi.mock("../kb/service", () => ({ countPendingChunks: async () => fake.pending }));
 const findRelated = vi.hoisted(() => vi.fn());
+// Tipados con el contrato real del servicio de agenda: si no, el valor inicial fija «ok: true» y
+// los casos de rechazo no compilan.
+type Availability = Awaited<ReturnType<typeof import("../scheduling/service").availability>>;
+type Booking = Awaited<ReturnType<typeof import("../scheduling/service").bookAppointment>>;
+const agenda = vi.hoisted(() => ({
+  ready: false,
+  availability: vi.fn<(day: string) => Promise<Availability>>(async () => ({
+    ok: true,
+    slots: [{ startIso: "2026-09-17T10:00:00", endIso: "2026-09-17T10:30:00", label: "10:00" }],
+  })),
+  book: vi.fn<(input: { startIso: string; name: string; contact: string; motive: string }) => Promise<Booking>>(async () => ({
+    ok: true,
+    startIso: "2026-09-17T10:00:00",
+    endIso: "2026-09-17T10:30:00",
+    eventId: "e1",
+  })),
+}));
+vi.mock("../scheduling/service", () => ({
+  canSchedule: async () => agenda.ready,
+  availability: (day: string) => agenda.availability(day),
+  bookAppointment: (input: { startIso: string; name: string; contact: string; motive: string }) => agenda.book(input),
+}));
 vi.mock("./retrieve", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./retrieve")>()),
   findRelated,
@@ -49,6 +71,9 @@ beforeEach(async () => {
   fake.credentials = { provider, apiKey: "sk-guardada" };
   fake.pending = 0;
   chat.mockReset().mockResolvedValue({ text: "Abrimos a las 7:00." });
+  agenda.ready = false;
+  agenda.availability.mockClear();
+  agenda.book.mockClear();
   findRelated.mockReset().mockResolvedValue(found);
   indexPending.mockClear();
   vi.spyOn(console, "info").mockImplementation(() => {});
@@ -251,5 +276,67 @@ describe("errores del proveedor (FR-012)", () => {
   it("un error que no es del proveedor no se esconde", async () => {
     chat.mockRejectedValue(new Error("bug"));
     await expect(send("hola")).rejects.toThrow("bug");
+  });
+});
+
+describe("agendamiento (006)", () => {
+  const cita = (args: Record<string, string>) =>
+    chat.mockResolvedValueOnce({ tool: "agendar_cita", args: JSON.stringify(args) });
+
+  it("sin cuenta conectada no ofrece las herramientas de agenda", async () => {
+    await send("¿me pueden dar una cita?");
+    const tools = chat.mock.calls[0][3]?.map((t) => t.name);
+    expect(tools).toEqual(["derivar"]);
+  });
+
+  it("con agendamiento listo ofrece ver_disponibilidad y agendar_cita", async () => {
+    agenda.ready = true;
+    await send("¿me pueden dar una cita?");
+    const tools = chat.mock.calls[0][3]?.map((t) => t.name);
+    expect(tools).toEqual(["derivar", "ver_disponibilidad", "agendar_cita"]);
+  });
+
+  it("consulta la disponibilidad y se la devuelve al modelo para que responda", async () => {
+    agenda.ready = true;
+    chat.mockResolvedValueOnce({ tool: "ver_disponibilidad", args: JSON.stringify({ fecha: "2026-09-17" }) });
+    chat.mockResolvedValueOnce({ text: "Tengo libre a las 10:00." });
+
+    const result = ok(await send("¿qué horarios tienen el jueves?"));
+    expect(agenda.availability).toHaveBeenCalledWith("2026-09-17");
+    expect(result.entries.map((e) => e.text)).toEqual(["Tengo libre a las 10:00."]);
+    // La segunda llamada al modelo lleva los horarios encontrados.
+    expect(JSON.stringify(chat.mock.calls[1][0])).toContain("10:00");
+  });
+
+  it("agenda la cita y confirma la hora exacta", async () => {
+    agenda.ready = true;
+    cita({ fecha_hora: "2026-09-17T10:00:00", nombre: "Ana", contacto: "3001234567", motivo: "Pedido" });
+
+    const result = ok(await send("Sí, confirmo la cita"));
+    expect(agenda.book).toHaveBeenCalledWith(
+      expect.objectContaining({ startIso: "2026-09-17T10:00:00", name: "Ana", contact: "3001234567" }),
+    );
+    expect(result.entries[0].text).toContain("10:00");
+  });
+
+  it("si el hueco ya está ocupado, lo dice y no confirma una cita falsa", async () => {
+    agenda.ready = true;
+    agenda.book.mockResolvedValueOnce({ ok: false, reason: "ocupado" });
+    cita({ fecha_hora: "2026-09-17T10:00:00", nombre: "Ana", contacto: "300", motivo: "x" });
+
+    const result = ok(await send("confirmo"));
+    expect(result.entries[0].text).toMatch(/ocup/i);
+    expect(result.mode).toBe("ia");
+  });
+
+  it("si Google falla, no inventa la cita y deriva a una persona (FR-010)", async () => {
+    agenda.ready = true;
+    agenda.book.mockResolvedValueOnce({ ok: false, reason: "google" });
+    cita({ fecha_hora: "2026-09-17T10:00:00", nombre: "Ana", contacto: "300", motivo: "x" });
+
+    const result = ok(await send("confirmo"));
+    expect(result.mode).toBe("humano");
+    const all = await getEntries(result.conversationId, { forClient: false });
+    expect(all?.map((e) => e.author)).toContain("nota");
   });
 });
