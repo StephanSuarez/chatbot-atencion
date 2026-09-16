@@ -1,0 +1,129 @@
+/* Adjuntos (010). Compartido por el chat de prueba y el detalle de Conversaciones. */
+
+.imagen {
+  display: block;
+  width: 220px;
+  max-width: 100%;
+  border-radius: 10px;
+}
+
+.audio {
+  display: block;
+  width: 240px;
+  max-width: 100%;
+}
+
+.doc {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #ece6dd;
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Dentro de una burbuja de color hace falta contraste propio. */
+.docSobreAcento {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.icono {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: #fdf6f2;
+  color: #b5532f;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.iconoSobreAcento {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.texto {
+  min-width: 0;
+}
+
+.texto b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.texto span {
+  font-size: 11.5px;
+  opacity: 0.75;
+}
+
+.conTexto {
+  margin-bottom: 8px;
+}
+
+/* ---------- El archivo elegido, antes de enviarlo ---------- */
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border: 1px solid #edd6c9;
+  border-radius: 10px;
+  background: #fdf6f2;
+  font-size: 13px;
+}
+
+.chipEnviando {
+  opacity: 0.6;
+}
+
+.chipMini {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.chipNombre {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chipPeso {
+  margin-left: auto;
+  color: #6f655c;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.chipQuitar {
+  flex: none;
+  border: 0;
+  background: none;
+  color: #6f655c;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.chipQuitar:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

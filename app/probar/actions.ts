@@ -1,6 +1,6 @@
 "use server";
 
-import { validateAttachment } from "../../lib/attachments/validate";
+import { MAX_NAME, validateAttachment } from "../../lib/attachments/validate";
 import { sendMessage, type SendResult } from "../../lib/chat/service";
 import {
   getConversation,
@@ -11,10 +11,6 @@ import {
 } from "../../lib/conversations/service";
 
 // Sin login (principio 11): cualquiera puede llamarlas con un POST. Los servicios validan todo lo que llega.
-
-// Un nombre absurdamente largo no se guarda entero; se valida ya recortado, así que si el recorte se lleva
-// la extensión el archivo se rechaza, que es el lado seguro.
-const MAX_NAME = 200;
 
 /**
  * El mensaje viaja como `FormData` porque puede traer un archivo, igual que la subida de documentos (002).
