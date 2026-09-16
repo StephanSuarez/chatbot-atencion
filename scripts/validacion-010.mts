@@ -87,24 +87,33 @@ const anotar = (criterio: string, caso: string, esperado: string, obtenido: stri
 
 const creadas: string[] = [];
 
-async function guardar(nombre: string, bytes: Uint8Array, categoria: string, tipo: string, texto = "") {
+/**
+ * La categoría y el tipo los decide el validador a partir de los bytes, no el fichero de muestra. Si se
+ * pasaran tal cual, la comprobación de la cabecera servida se estaría comparando consigo misma.
+ */
+async function guardar(nombre: string, bytes: Uint8Array, texto = "") {
+  const revisado = validateAttachment(nombre, new Uint8Array(bytes));
+  if (!revisado.ok) throw new Error(`la muestra ${nombre} no pasó la validación: ${revisado.error}`);
+
   const guardado = await saveClientMessage({
     clientMessageId: randomUUID(),
     text: texto,
-    attachment: { name: nombre, category: categoria as "imagen", contentType: tipo, data: new Uint8Array(bytes) },
+    attachment: { name: nombre, category: revisado.category, contentType: revisado.contentType, data: new Uint8Array(bytes) },
   });
   creadas.push(guardado.conversationId);
   const entradas = (await getEntries(guardado.conversationId, { forClient: true })) ?? [];
-  return { conversationId: guardado.conversationId, entrada: entradas[0] };
+  return { conversationId: guardado.conversationId, entrada: entradas[0], revisado };
 }
 
 // ---------- SC-001: los tres tipos se guardan y se sirven ----------
 
 console.info("SC-001: guardar y servir los tres tipos…");
 for (const muestra of MUESTRAS) {
-  const { entrada } = await guardar(muestra.nombre, muestra.bytes, muestra.categoria, muestra.tipo, "mira esto");
+  const { entrada, revisado } = await guardar(muestra.nombre, muestra.bytes, "mira esto");
   const ficha = entrada?.attachment;
 
+  // Lo que se guarda sale del validador: esto comprueba que acertó, contra lo que se espera de la muestra.
+  anotar("SC-001", `${muestra.nombre}: el validador decide categoría y tipo`, `${muestra.categoria}/${muestra.tipo}`, `${revisado.category}/${revisado.contentType}`);
   anotar("SC-001", `${muestra.nombre}: queda la ficha`, `${muestra.categoria}/${muestra.bytes.length}`, `${ficha?.category}/${ficha?.sizeBytes}`);
 
   if (!ficha) continue;
@@ -153,7 +162,7 @@ if (enviado.ok) {
 // ---------- SC-002 (parte automatizable): el equipo responde con un archivo ----------
 
 console.info("SC-002: respuesta del equipo con archivo…");
-const conversacion = (await guardar("recibo.png", PNG, "imagen", "image/png", "hola")).conversationId;
+const conversacion = (await guardar("recibo.png", PNG, "hola")).conversationId;
 await setMode(conversacion, "humano");
 const respondido = await saveTeamReply(conversacion, "Aquí tienes la nota crédito", {
   name: "nota-credito.pdf",
@@ -194,7 +203,7 @@ anotar("SC-004", "acepta justo en el límite", "aceptado", validateAttachment("j
 // ---------- SC-005: borrar la conversación deja el archivo inaccesible ----------
 
 console.info("SC-005: borrado…");
-const paraBorrar = await guardar("recibo.png", PNG, "imagen", "image/png", "bórrame");
+const paraBorrar = await guardar("recibo.png", PNG, "bórrame");
 const idAdjunto = paraBorrar.entrada?.attachment?.id;
 const antes = await fetch(`${BASE}/api/adjuntos/${idAdjunto}`);
 await deleteConversation(paraBorrar.conversationId);

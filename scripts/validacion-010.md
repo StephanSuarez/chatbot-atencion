@@ -1,24 +1,27 @@
 # Validación 010 — Mensajes multimedia
 
 - **Fecha:** 2026-09-16
-- **Resultado:** 31 de 31 comprobaciones
+- **Resultado:** 34 de 34 comprobaciones
 - **Saldo gastado:** ninguno. Un adjunto deriva por código antes de llamar al proveedor (FR-015), así que este guion no hace ninguna llamada al modelo.
 - **Cómo se corrió:** `npx tsx scripts/validacion-010.mts` con el servidor de desarrollo levantado. Los archivos de muestra (PNG, WAV y PDF reales) se construyen dentro del guion.
 
-## SC-001 — 15 de 15
+## SC-001 — 18 de 18
 
 | Caso | Esperado | Obtenido | |
 |---|---|---|---|
+| recibo.png: el validador decide categoría y tipo | imagen/image/png | imagen/image/png | ✅ |
 | recibo.png: queda la ficha | imagen/70 | imagen/70 | ✅ |
 | recibo.png: la ruta devuelve los bytes | 200/iguales | 200/iguales | ✅ |
 | recibo.png: tipo que impone el servidor | image/png | image/png | ✅ |
 | recibo.png: se muestra o se descarga | inline | inline | ✅ |
 | recibo.png: nosniff | nosniff | nosniff | ✅ |
+| nota.wav: el validador decide categoría y tipo | audio/audio/wav | audio/audio/wav | ✅ |
 | nota.wav: queda la ficha | audio/244 | audio/244 | ✅ |
 | nota.wav: la ruta devuelve los bytes | 200/iguales | 200/iguales | ✅ |
 | nota.wav: tipo que impone el servidor | audio/wav | audio/wav | ✅ |
 | nota.wav: se muestra o se descarga | inline | inline | ✅ |
 | nota.wav: nosniff | nosniff | nosniff | ✅ |
+| factura.pdf: el validador decide categoría y tipo | documento/application/pdf | documento/application/pdf | ✅ |
 | factura.pdf: queda la ficha | documento/193 | documento/193 | ✅ |
 | factura.pdf: la ruta devuelve los bytes | 200/iguales | 200/iguales | ✅ |
 | factura.pdf: tipo que impone el servidor | application/pdf | application/pdf | ✅ |
