@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { ACCEPTED_EXTENSIONS, MAX_FILE_BYTES } from "../../lib/attachments/validate";
 import type { FoundChunk } from "../../lib/chat/retrieve";
 import type { Entry } from "../../lib/conversations/service";
+import { ChipArchivo, ClipIcon, deEntrada, localAdjunto, VistaAdjunto, type Adjunto } from "../adjunto";
 import { call } from "../call";
 import { joinEs, thousands } from "../config-form";
 import c from "../config.module.css";
@@ -15,14 +16,6 @@ const MAX_MESSAGE = 1000;
 // Cada 3 s se preguntan los mensajes nuevos del equipo (plan 004 §3). No llama al modelo: no gasta saldo.
 const POLL_MS = 3000;
 const STORAGE_KEY = "chatbot.conversacion";
-
-/** Lo que hace falta para mostrar un adjunto, venga del servidor o del archivo recién elegido. */
-interface Adjunto {
-  name: string;
-  category: string;
-  sizeBytes: number;
-  url: string;
-}
 
 interface Message {
   role: "user" | "assistant";
@@ -44,27 +37,8 @@ const fromEntry = (entry: Entry): Message => ({
   role: entry.author === "cliente" ? "user" : "assistant",
   author: entry.author,
   content: entry.text,
-  adjunto: entry.attachment && {
-    name: entry.attachment.name,
-    category: entry.attachment.category,
-    sizeBytes: entry.attachment.sizeBytes,
-    url: `/api/adjuntos/${entry.attachment.id}`,
-  },
+  adjunto: entry.attachment && deEntrada(entry.attachment),
 });
-
-// El mensaje recién enviado todavía no existe en el servidor, así que se muestra desde el archivo local.
-// ponytail: la URL creada vive lo que dure la página; se liberan todas al empezar otra conversación.
-const localAdjunto = (file: File): Adjunto => ({
-  name: file.name,
-  category: file.type.startsWith("image/") ? "imagen" : file.type.startsWith("audio/") ? "audio" : "documento",
-  sizeBytes: file.size,
-  url: URL.createObjectURL(file),
-});
-
-const peso = (bytes: number) =>
-  bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-
-const extension = (name: string) => (name.split(".").pop() ?? "").toUpperCase().slice(0, 4);
 
 // Lo guardado solo existe en el navegador: en el servidor no hay localStorage y se empieza sin conversación.
 const stored = (): string | undefined => {
@@ -288,7 +262,9 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
               message.role === "user" ? (
                 <div key={index} className={s.userTurn}>
                   <div className={message.adjunto && !message.content ? `${s.me} ${s.onlyFile}` : s.me}>
-                    {message.adjunto && <Adjunto adjunto={message.adjunto} conTexto={!!message.content} />}
+                    {message.adjunto && (
+                      <VistaAdjunto adjunto={message.adjunto} conTexto={!!message.content} sobreAcento />
+                    )}
                     {message.content}
                   </div>
                   {message.failed && (
@@ -320,7 +296,7 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
                     <span className={s.teamLabel}>
                       <i className={s.teamDot} /> Equipo de {companyName}
                     </span>
-                    {message.adjunto && <Adjunto adjunto={message.adjunto} conTexto={!!message.content} />}
+                    {message.adjunto && <VistaAdjunto adjunto={message.adjunto} conTexto={!!message.content} />}
                     {message.content}
                   </div>
                 </div>
@@ -387,25 +363,7 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
         )}
 
         {file && (
-          <div className={sending ? `${s.chip} ${s.chipSending}` : s.chip}>
-            {filePreview ? (
-              // eslint-disable-next-line @next/next/no-img-element -- next/image no admite URLs blob:
-              <img className={s.chipThumb} src={filePreview} alt="" />
-            ) : (
-              <span className={s.docIcon}>{extension(file.name)}</span>
-            )}
-            <span className={s.chipName}>{file.name}</span>
-            <span className={s.chipSize}>{peso(file.size)}</span>
-            <button
-              type="button"
-              className={s.chipRemove}
-              aria-label={`Quitar ${file.name}`}
-              disabled={sending}
-              onClick={() => setFile(null)}
-            >
-              ×
-            </button>
-          </div>
+          <ChipArchivo file={file} preview={filePreview} sending={sending} onRemove={() => setFile(null)} />
         )}
 
         <form
@@ -480,40 +438,7 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
   );
 }
 
-/** La imagen se ve, el audio se escucha y el documento se descarga con su nombre (FR-007, FR-008). */
-function Adjunto({ adjunto, conTexto }: { adjunto: Adjunto; conTexto: boolean }) {
-  if (adjunto.category === "imagen") {
-    // Es un archivo del cliente servido por nuestra propia ruta, no un recurso del sitio, y la vista previa
-    // local llega como URL blob:, que next/image no admite.
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img className={conTexto ? `${s.adjImage} ${s.withText}` : s.adjImage} src={adjunto.url} alt={adjunto.name} />;
-  }
-  if (adjunto.category === "audio") {
-    return <audio className={conTexto ? `${s.adjAudio} ${s.withText}` : s.adjAudio} controls src={adjunto.url} />;
-  }
-  return (
-    <a
-      className={conTexto ? `${s.adjDoc} ${s.withText}` : s.adjDoc}
-      href={adjunto.url}
-      download={adjunto.name}
-      title={adjunto.name}
-    >
-      <span className={s.docIcon}>{extension(adjunto.name)}</span>
-      <span className={s.docText}>
-        <b>{adjunto.name}</b>
-        <span>{peso(adjunto.sizeBytes)}</span>
-      </span>
-    </a>
-  );
-}
-
 const icon = { width: 16, height: 16, viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", "aria-hidden": true } as const;
-
-const ClipIcon = () => (
-  <svg {...icon} width={18} height={18} strokeWidth={1.5} strokeLinecap="round">
-    <path d="M13.5 7.5 8.2 12.8a3 3 0 0 1-4.3-4.3l5.4-5.3a2 2 0 0 1 2.8 2.8l-5.4 5.4a1 1 0 0 1-1.4-1.4l5-5" />
-  </svg>
-);
 
 const SendIcon = () => (
   <svg {...icon} width={18} height={18} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">

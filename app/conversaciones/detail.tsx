@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { MAX_FILE_BYTES, ACCEPTED_EXTENSIONS } from "../../lib/attachments/validate";
 import type { Entry, Mode } from "../../lib/conversations/service";
+import { ChipArchivo, ClipIcon, deEntrada, VistaAdjunto } from "../adjunto";
 import { call } from "../call";
 import c from "../config.module.css";
 import { conversationAction, replyAction, setModeAction } from "./actions";
@@ -27,7 +29,11 @@ export function Detail({ id, companyName, onBack, onGone, onChanged }: Props) {
   const [derived, setDerived] = useState(false);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [working, startWorking] = useTransition();
+  const fileInput = useRef<HTMLInputElement>(null);
+  // Una sola URL por archivo: crearla dentro del render la recrearía en cada pintado.
+  const filePreview = useMemo(() => (file?.type.startsWith("image/") ? URL.createObjectURL(file) : null), [file]);
   const lastSeq = useRef(0);
   const busy = useRef(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -89,17 +95,39 @@ export function Detail({ id, companyName, onBack, onGone, onChanged }: Props) {
 
   function reply() {
     const text = draft.trim();
-    if (!text || working) return;
+    // Una respuesta solo con archivo es válida (010, FR-005).
+    if ((!text && !file) || working) return;
     setError(null);
     busy.current = true;
     startWorking(async () => {
-      const result = await call(() => replyAction(id, text), { ok: false, error: "No pudimos contactar al servidor." });
-      if (result.ok) setDraft("");
-      else setError(result.error ?? "No se pudo enviar.");
+      // El archivo obliga a FormData, igual que en el chat del cliente.
+      const form = new FormData();
+      form.set("id", id);
+      form.set("text", text);
+      if (file) form.set("file", file);
+
+      const result = await call(() => replyAction(form), { ok: false, error: "No pudimos contactar al servidor." });
+      if (result.ok) {
+        setDraft("");
+        setFile(null);
+      } else {
+        // El archivo sigue elegido: reintentar no obliga a buscarlo otra vez.
+        setError(result.error ?? "No se pudo enviar.");
+      }
       busy.current = false;
       await pull();
       handlers.current.onChanged();
     });
+  }
+
+  function choose(chosen: File | null) {
+    if (!chosen) return;
+    if (chosen.size > MAX_FILE_BYTES) {
+      setError(`“${chosen.name}” pesa más de 4 MB.`);
+      return;
+    }
+    setError(null);
+    setFile(chosen);
   }
 
   const tooLong = draft.length > MAX_REPLY;
@@ -163,12 +191,19 @@ export function Detail({ id, companyName, onBack, onGone, onChanged }: Props) {
               <span className={s.author}>
                 {entry.author === "equipo" ? `Equipo de ${companyName}` : AUTHOR[entry.author]} · {entry.when}
               </span>
+              {entry.attachment && <VistaAdjunto adjunto={deEntrada(entry.attachment)} conTexto={!!entry.text} />}
               {entry.text}
             </div>
           ),
         )}
         <div ref={endRef} />
       </div>
+
+      {file && (
+        <div className={s.replyChip}>
+          <ChipArchivo file={file} preview={filePreview} sending={working} onRemove={() => setFile(null)} />
+        </div>
+      )}
 
       <form
         className={s.replyBar}
@@ -177,6 +212,27 @@ export function Detail({ id, companyName, onBack, onGone, onChanged }: Props) {
           reply();
         }}
       >
+        <input
+          ref={fileInput}
+          type="file"
+          className={c.srOnly}
+          // Lo abre el botón de al lado: oculto pero enfocable sería un punto de tabulación invisible.
+          tabIndex={-1}
+          accept={ACCEPTED_EXTENSIONS.join(",")}
+          onChange={(e) => {
+            choose(e.target.files?.[0] ?? null);
+            e.target.value = "";
+          }}
+        />
+        <button
+          type="button"
+          className={s.replyAttach}
+          aria-label="Adjuntar un archivo"
+          disabled={mode === "ia" || working}
+          onClick={() => fileInput.current?.click()}
+        >
+          <ClipIcon />
+        </button>
         <label htmlFor="respuesta" className={c.srOnly}>Respuesta al cliente</label>
         <textarea
           id="respuesta"

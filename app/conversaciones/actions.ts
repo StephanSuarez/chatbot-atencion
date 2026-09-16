@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
+import { MAX_NAME, validateAttachment } from "../../lib/attachments/validate";
 import { proposeFromConversation } from "../../lib/learning/propose";
 import { MAX_REPLY } from "./limits";
 import {
@@ -12,6 +13,7 @@ import {
   setMode,
   type Entry,
   type Mode,
+  type NewAttachment,
 } from "../../lib/conversations/service";
 
 // Sin login (principio 11): cualquiera puede llamarlas con un POST. El servicio valida lo que llega.
@@ -71,12 +73,31 @@ export async function setModeAction(id: unknown, mode: unknown): Promise<Result>
   }
 }
 
-export async function replyAction(id: unknown, text: unknown): Promise<Result> {
+/**
+ * La respuesta viaja como `FormData` porque puede traer un archivo, igual que el mensaje del cliente (010).
+ * Aquí es donde se valida: es el límite por el que entra algo de fuera (principio 3).
+ */
+export async function replyAction(form: FormData): Promise<Result> {
+  const id = form.get("id");
+  const text = form.get("text");
+  const file = form.get("file");
   const message = typeof text === "string" ? text.trim() : "";
-  if (!message) return { ok: false, error: "Escribe una respuesta." };
+
+  // Una respuesta solo con archivo es válida; sin texto y sin archivo no hay nada que enviar.
+  if (!message && !(file instanceof File)) return { ok: false, error: "Escribe una respuesta." };
   if (message.length > MAX_REPLY) return { ok: false, error: `La respuesta supera los ${MAX_REPLY} caracteres.` };
+
   try {
-    const saved = await saveTeamReply(id, message);
+    let attachment: NewAttachment | undefined;
+    if (file instanceof File) {
+      const name = file.name.slice(0, MAX_NAME);
+      const data = new Uint8Array(await file.arrayBuffer());
+      const checked = validateAttachment(name, data);
+      if (!checked.ok) return { ok: false, error: checked.error };
+      attachment = { name, category: checked.category, contentType: checked.contentType, data };
+    }
+
+    const saved = await saveTeamReply(id, message, attachment);
     if (!saved) return { ok: false, error: "Para responder, primero pasa la conversación a «Respondes tú»." };
     revalidatePath(PATH);
     return { ok: true };

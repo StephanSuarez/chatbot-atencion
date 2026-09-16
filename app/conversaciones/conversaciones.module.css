@@ -821,3 +821,34 @@
   color: #6f655c;
   line-height: 1.5;
 }
+
+/* ---------- Adjuntos (010) ---------- */
+
+/* Mismo tamaño que el de enviar, al otro lado del campo de respuesta. */
+.replyAttach {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #ded5c8;
+  border-radius: 10px;
+  background: #fff;
+  color: #6f655c;
+  cursor: pointer;
+}
+
+.replyAttach:hover:not(:disabled) {
+  border-color: #b5532f;
+  color: #b5532f;
+}
+
+.replyAttach:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* El chip va encima de la barra, que es una fila. */
+.replyChip {
+  padding: 0 14px;
+}

@@ -9,6 +9,10 @@ export type Category = "imagen" | "audio" | "documento";
 // ese módulo y su base de datos al camino de los mensajes.
 export const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
+// Un nombre absurdamente largo no se guarda entero. Se valida ya recortado, así que si el recorte se lleva
+// la extensión el archivo se rechaza, que es el lado seguro.
+export const MAX_NAME = 200;
+
 export type ValidationResult =
   | { ok: true; category: Category; contentType: string }
   | { ok: false; error: string };
