@@ -419,6 +419,8 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
             ref={fileInput}
             type="file"
             className={c.srOnly}
+            // Lo abre el botón de al lado: oculto pero enfocable sería un punto de tabulación invisible.
+            tabIndex={-1}
             accept={ACCEPTED_EXTENSIONS.join(",")}
             onChange={(e) => {
               choose(e.target.files?.[0] ?? null);
