@@ -25,30 +25,40 @@ const HEADERS: Record<string, Uint8Array> = {
   "precios.txt": new TextEncoder().encode("Café con leche: 5000"),
 };
 
-const CATEGORIES: Record<string, string> = {
-  jpg: "imagen",
-  png: "imagen",
-  gif: "imagen",
-  webp: "imagen",
-  mp3: "audio",
-  m4a: "audio",
-  ogg: "audio",
-  wav: "audio",
-  pdf: "documento",
-  docx: "documento",
-  txt: "documento",
+// El tipo de contenido se comprueba uno por uno, y no solo la categoría: es el que el servidor
+// impondrá al servir el archivo (plan §7), así que un cambio ahí tiene consecuencias de seguridad.
+const EXPECTED: Record<string, { category: string; contentType: string }> = {
+  jpg: { category: "imagen", contentType: "image/jpeg" },
+  png: { category: "imagen", contentType: "image/png" },
+  gif: { category: "imagen", contentType: "image/gif" },
+  webp: { category: "imagen", contentType: "image/webp" },
+  mp3: { category: "audio", contentType: "audio/mpeg" },
+  m4a: { category: "audio", contentType: "audio/mp4" },
+  ogg: { category: "audio", contentType: "audio/ogg" },
+  wav: { category: "audio", contentType: "audio/wav" },
+  pdf: { category: "documento", contentType: "application/pdf" },
+  docx: {
+    category: "documento",
+    contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  },
+  txt: { category: "documento", contentType: "text/plain; charset=utf-8" },
 };
 
 describe("archivos aceptados", () => {
   for (const [name, data] of Object.entries(HEADERS)) {
     const extension = name.split(".").pop()!;
-    it(`acepta ${name} como ${CATEGORIES[extension]}`, () => {
-      expect(validateAttachment(name, data)).toMatchObject({ ok: true, category: CATEGORIES[extension] });
+    it(`acepta ${name} como ${EXPECTED[extension].category}, sirviéndose ${EXPECTED[extension].contentType}`, () => {
+      expect(validateAttachment(name, data)).toEqual({ ok: true, ...EXPECTED[extension] });
     });
   }
 
   it("la extensión no distingue mayúsculas", () => {
-    expect(validateAttachment("FOTO.PNG", HEADERS["foto.png"])).toMatchObject({ ok: true, category: "imagen" });
+    expect(validateAttachment("FOTO.PNG", HEADERS["foto.png"])).toEqual({ ok: true, ...EXPECTED.png });
+  });
+
+  it("ningún tipo servido es ejecutable en el navegador", () => {
+    const servidos = Object.values(EXPECTED).map((e) => e.contentType);
+    expect(servidos.some((tipo) => /html|javascript|svg/.test(tipo))).toBe(false);
   });
 
   it("un mp3 sin etiqueta ID3 empieza por el sincronismo de trama", () => {
