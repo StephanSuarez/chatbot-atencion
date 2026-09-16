@@ -2,11 +2,12 @@ import { connection } from "next/server";
 import { getConfig } from "../../lib/config-service";
 import { countPending, listConversations, type TypeFilter } from "../../lib/conversations/service";
 import { Tabs } from "../tabs";
+import { ConversationsView } from "./list-view";
+import { rangeOf, type Preset } from "./range";
+
 // La fecha se formatea aquí, en el servidor: hacerlo en el navegador usa otra zona horaria y rompe
 // la hidratación (error visto en dev el 2026-09-15).
 const fecha = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
-import { ConversationsView } from "./list-view";
-import { rangeOf, type Preset } from "./range";
 
 interface Props {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
