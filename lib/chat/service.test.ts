@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { sql } from "../db";
 import { ProviderError, type ChatMessage, type ChatResult, type Tool } from "../providers";
-import { getConversation, getEntries, saveTeamReply, setMode } from "../conversations/service";
+import { getConversation, getEntries, saveClientMessage, saveTeamReply, setMode } from "../conversations/service";
 
 const fake = vi.hoisted(() => ({
   config: {} as { companyName: string; prompt: string; model: string | null; complete: boolean; missing: string[] },
@@ -397,5 +397,17 @@ describe("adjuntos (010)", () => {
 
     expect(chat).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(chat.mock.calls[0][0])).toContain("recibo.png");
+  });
+
+  it("un reintento cuyo primer intento murió antes de responder sigue derivando", async () => {
+    // El mensaje quedó guardado pero el turno del bot no llegó a escribirse: la conversación sigue en
+    // modo IA, así que el reintento tiene que derivar en vez de mandarle el mensaje vacío al modelo.
+    const clientMessageId = randomUUID();
+    const { conversationId } = await saveClientMessage({ clientMessageId, text: "", attachment: foto });
+
+    const result = ok(await sendMessage({ conversationId, clientMessageId, message: "", attachment: foto }));
+
+    expect(result.mode).toBe("humano");
+    expect(chat).not.toHaveBeenCalled();
   });
 });

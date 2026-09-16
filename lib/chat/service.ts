@@ -70,7 +70,9 @@ export async function sendMessage(input: {
   // El archivo no se le manda al modelo: el bot no puede leerlo, así que deriva por código y sin gastar
   // saldo (FR-009, FR-015). Deriva aunque el mensaje traiga además una pregunta que sabría responder:
   // contestar solo a la mitad de lo que mandó el cliente confunde más de lo que ayuda.
-  if (!saved.duplicate && input.attachment) {
+  // Sin condición sobre el reintento: si el primer intento ya derivó, la conversación está en modo
+  // humano y se sale mucho antes. Llegar aquí significa que la derivación no ocurrió.
+  if (input.attachment) {
     await saveBotTurn(conversationId, {
       entries: [
         { author: "bot", text: "Recibí tu archivo. Una persona del equipo lo va a revisar y te responde por aquí." },
