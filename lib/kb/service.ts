@@ -33,7 +33,12 @@ export function listEntries() {
   return db.select().from(kbEntries).orderBy(asc(kbEntries.createdAt));
 }
 
-export async function saveEntry(input: { id?: string; title: string; content: string }): Promise<EntryResult> {
+export async function saveEntry(input: {
+  id?: string;
+  title: string;
+  content: string;
+  learnedFromConversationId?: string;
+}): Promise<EntryResult> {
   const title = input.title.trim();
   const content = input.content.trim();
   const errors: EntryErrors = {};
@@ -45,7 +50,10 @@ export async function saveEntry(input: { id?: string; title: string; content: st
   const id = await db.transaction(async (tx) => {
     const [entry] = input.id
       ? await tx.update(kbEntries).set({ title, content, updatedAt: new Date() }).where(eq(kbEntries.id, input.id)).returning()
-      : await tx.insert(kbEntries).values({ title, content }).returning();
+      : await tx
+          .insert(kbEntries)
+          .values({ title, content, learnedFromConversationId: input.learnedFromConversationId })
+          .returning();
     if (!entry) return null;
     await tx.delete(kbChunks).where(eq(kbChunks.entryId, entry.id));
     await tx.insert(kbChunks).values(chunkText(title, content).map((text, position) => ({ entryId: entry.id, position, text })));
