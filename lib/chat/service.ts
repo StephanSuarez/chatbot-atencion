@@ -6,6 +6,7 @@ import {
   saveClientMessage,
   type Entry,
   type Mode,
+  type NewAttachment,
 } from "../conversations/service";
 import { indexPending } from "../kb/indexer";
 import { countPendingChunks } from "../kb/service";
@@ -32,9 +33,12 @@ export async function sendMessage(input: {
   message?: unknown;
   // Las simulaciones (009) crean sus conversaciones con su propio origen.
   origin?: "chat_de_prueba" | "simulacion";
+  // Ya validado por `lib/attachments` antes de llegar aquí (010).
+  attachment?: NewAttachment;
 }): Promise<SendResult> {
   const message = typeof input.message === "string" ? input.message.trim() : "";
-  if (!message) return { ok: false, error: "Escribe un mensaje." };
+  // Un mensaje solo con archivo es válido (FR-001); sin texto y sin archivo no hay nada que enviar.
+  if (!message && !input.attachment) return { ok: false, error: "Escribe un mensaje." };
   if (message.length > MAX_MESSAGE) return { ok: false, error: `El mensaje supera los ${MAX_MESSAGE} caracteres.` };
   const clientMessageId = typeof input.clientMessageId === "string" ? input.clientMessageId : "";
   if (!clientMessageId) return { ok: false, error: "No pudimos enviar el mensaje. Recarga la página." };
@@ -50,6 +54,7 @@ export async function sendMessage(input: {
     clientMessageId,
     text: message,
     origin: input.origin,
+    attachment: input.attachment,
   });
   const { conversationId, seq } = saved;
   const conversation = await getConversation(conversationId);
@@ -60,6 +65,25 @@ export async function sendMessage(input: {
   if (saved.duplicate) {
     const previous = await answer(conversationId, seq, conversation.mode);
     if (!previous.ok || previous.entries.length > 0) return previous;
+  }
+
+  // El archivo no se le manda al modelo: el bot no puede leerlo, así que deriva por código y sin gastar
+  // saldo (FR-009, FR-015). Deriva aunque el mensaje traiga además una pregunta que sabría responder:
+  // contestar solo a la mitad de lo que mandó el cliente confunde más de lo que ayuda.
+  // Sin condición sobre el reintento: si el primer intento ya derivó, la conversación está en modo
+  // humano y se sale mucho antes. Llegar aquí significa que la derivación no ocurrió.
+  if (input.attachment) {
+    await saveBotTurn(conversationId, {
+      entries: [
+        { author: "bot", text: "Recibí tu archivo. Una persona del equipo lo va a revisar y te responde por aquí." },
+        { author: "nota", text: `El cliente envió un archivo que el bot no puede leer: ${input.attachment.name}.` },
+        { author: "evento", text: "El bot pasó la conversación a modo humano (recibió un archivo)." },
+      ],
+      toHuman: true,
+      handoffReason: "adjunto",
+    });
+    console.info(`[chat] conv=${conversationId}: derivado por adjunto`);
+    return answer(conversationId, seq, "humano");
   }
 
   const { provider, apiKey } = credentials;
@@ -195,12 +219,20 @@ function derivationOf(result: ChatResult, foundCount: number, providerId: string
 
 const ROLE: Record<string, ChatMessage["role"]> = { cliente: "user", bot: "assistant", equipo: "assistant" };
 
+// Un mensaje solo con archivo no tiene texto: sin nombrarlo, el historial le mandaría al modelo un
+// mensaje vacío del cliente.
+const historyText = (entry: Entry) =>
+  (entry.attachment ? `${entry.text} [archivo adjunto: ${entry.attachment.name}]`.trim() : entry.text).slice(
+    0,
+    MAX_HISTORY_CONTENT,
+  );
+
 async function recentHistory(conversationId: string, beforeSeq: number): Promise<ChatMessage[]> {
   const entries = (await getEntries(conversationId, { forClient: true })) ?? [];
   return entries
     .filter((entry) => entry.seq < beforeSeq)
     .slice(-HISTORY_LIMIT)
-    .map((entry) => ({ role: ROLE[entry.author], content: entry.text.slice(0, MAX_HISTORY_CONTENT) }));
+    .map((entry) => ({ role: ROLE[entry.author], content: historyText(entry) }));
 }
 
 // Textos de la cita, en el idioma del cliente. La hora que se confirma es la que quedó creada (FR-008).

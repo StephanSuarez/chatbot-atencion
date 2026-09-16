@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { sql } from "../db";
 import { ProviderError, type ChatMessage, type ChatResult, type Tool } from "../providers";
-import { getConversation, getEntries, saveTeamReply, setMode } from "../conversations/service";
+import { getConversation, getEntries, saveClientMessage, saveTeamReply, setMode } from "../conversations/service";
 
 const fake = vi.hoisted(() => ({
   config: {} as { companyName: string; prompt: string; model: string | null; complete: boolean; missing: string[] },
@@ -338,5 +338,76 @@ describe("agendamiento (006)", () => {
     expect(result.mode).toBe("humano");
     const all = await getEntries(result.conversationId, { forClient: false });
     expect(all?.map((e) => e.author)).toContain("nota");
+  });
+});
+
+describe("adjuntos (010)", () => {
+  const foto = {
+    name: "recibo.png",
+    category: "imagen" as const,
+    contentType: "image/png",
+    data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+  };
+
+  const conArchivo = (message = "") => sendMessage({ clientMessageId: randomUUID(), message, attachment: foto });
+
+  it("deriva a una persona sin llamar al proveedor, así que no gasta saldo (FR-009, FR-015)", async () => {
+    const result = ok(await conArchivo("mira esto"));
+
+    expect(result.mode).toBe("humano");
+    expect(chat).not.toHaveBeenCalled();
+    expect(findRelated).not.toHaveBeenCalled();
+  });
+
+  it("avisa al cliente y deja la nota con el motivo, solo para el equipo (FR-010)", async () => {
+    const result = ok(await conArchivo("mira esto"));
+
+    const all = await getEntries(result.conversationId, { forClient: false });
+    expect(all?.map((e) => e.author)).toEqual(["cliente", "bot", "nota", "evento"]);
+    expect(all?.find((e) => e.author === "nota")?.text).toContain("recibo.png");
+    // El cliente ve el aviso, nunca la nota.
+    expect(result.entries.map((e) => e.author)).toEqual(["bot"]);
+
+    const [row] = await sql`select handoff_reason from conversations where id = ${result.conversationId}`;
+    expect(row.handoff_reason).toBe("adjunto");
+  });
+
+  it("un mensaje solo con archivo, sin texto, es válido (FR-001)", async () => {
+    expect(ok(await conArchivo("")).mode).toBe("humano");
+  });
+
+  it("sin texto y sin archivo no hay nada que enviar", async () => {
+    expect(await sendMessage({ clientMessageId: randomUUID(), message: "" })).toEqual({
+      ok: false,
+      error: "Escribe un mensaje.",
+    });
+  });
+
+  it("deriva aunque el archivo venga con una pregunta que sabría responder (HU-3)", async () => {
+    const result = ok(await conArchivo("¿a qué hora abren?"));
+
+    expect(result.mode).toBe("humano");
+    expect(chat).not.toHaveBeenCalled();
+  });
+
+  it("el historial nombra el archivo en vez de mandarle al modelo un mensaje vacío", async () => {
+    const first = ok(await conArchivo(""));
+    await setMode(first.conversationId, "ia");
+    await send("¿y ahora?", first.conversationId);
+
+    expect(chat).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(chat.mock.calls[0][0])).toContain("recibo.png");
+  });
+
+  it("un reintento cuyo primer intento murió antes de responder sigue derivando", async () => {
+    // El mensaje quedó guardado pero el turno del bot no llegó a escribirse: la conversación sigue en
+    // modo IA, así que el reintento tiene que derivar en vez de mandarle el mensaje vacío al modelo.
+    const clientMessageId = randomUUID();
+    const { conversationId } = await saveClientMessage({ clientMessageId, text: "", attachment: foto });
+
+    const result = ok(await sendMessage({ conversationId, clientMessageId, message: "", attachment: foto }));
+
+    expect(result.mode).toBe("humano");
+    expect(chat).not.toHaveBeenCalled();
   });
 });

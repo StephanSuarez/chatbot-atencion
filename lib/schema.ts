@@ -104,7 +104,8 @@ export const conversations = pgTable(
     mode: text("mode", { enum: ["ia", "humano"] }).notNull().default("ia"),
     derived: boolean("derived").notNull().default(false),
     // Motivo de la derivación (008): antes solo estaba dentro del texto del evento.
-    handoffReason: text("handoff_reason", { enum: ["no_sabe", "enojo", "pide_persona"] }),
+    // «adjunto» (010) lo decide el código, no el modelo. Es solo el tipo: la columna es texto, sin check.
+    handoffReason: text("handoff_reason", { enum: ["no_sabe", "enojo", "pide_persona", "adjunto"] }),
     // Pedidos de "hablar con una persona" desde que está en modo IA (plan §4): lo cuenta el servidor.
     personRequests: integer("person_requests").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

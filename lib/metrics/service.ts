@@ -18,7 +18,7 @@ export interface Summary {
   resolutionRate: number;
 }
 
-export type HandoffReason = "no_sabe" | "enojo" | "pide_persona";
+export type HandoffReason = "no_sabe" | "enojo" | "pide_persona" | "adjunto";
 export type ReasonBreakdown = Record<HandoffReason | "sin_registrar", number>;
 
 export interface Topic {
@@ -69,7 +69,7 @@ export async function handoffReasons(range: Range = {}): Promise<ReasonBreakdown
     .where(and(eq(conversations.derived, true), ...inRange(range)))
     .groupBy(conversations.handoffReason);
 
-  const breakdown: ReasonBreakdown = { no_sabe: 0, enojo: 0, pide_persona: 0, sin_registrar: 0 };
+  const breakdown: ReasonBreakdown = { no_sabe: 0, enojo: 0, pide_persona: 0, adjunto: 0, sin_registrar: 0 };
   for (const row of rows) breakdown[row.reason ?? "sin_registrar"] = row.n;
   return breakdown;
 }
