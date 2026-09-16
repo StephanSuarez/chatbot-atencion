@@ -63,6 +63,8 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
   const [sending, startSending] = useTransition();
   const endRef = useRef<HTMLDivElement>(null);
   const lastSeq = useRef(0);
+  // Mientras hay un envío en vuelo no se consulta: si no, la respuesta llegaría por los dos caminos y se duplicaría.
+  const busy = useRef(false);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
@@ -89,7 +91,7 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
   useEffect(() => {
     if (!conversationId) return;
     const tick = () => {
-      if (document.visibilityState === "visible") void pull(conversationId);
+      if (!busy.current && document.visibilityState === "visible") void pull(conversationId);
     };
     tick();
     const timer = setInterval(tick, POLL_MS);
@@ -105,6 +107,7 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
   function send(text: string, before: Message[], retryId?: string) {
     const clientMessageId = retryId ?? crypto.randomUUID();
     setMessages([...before, { role: "user", content: text, clientMessageId }]);
+    busy.current = true;
     startSending(async () => {
       const result = await call(() => sendMessageAction({ conversationId, clientMessageId, message: text }), {
         ok: false as const,
@@ -130,6 +133,7 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
         }
         setMessages([...before, { role: "user", content: text, failed: result.error, clientMessageId }]);
       }
+      busy.current = false;
     });
   }
 
