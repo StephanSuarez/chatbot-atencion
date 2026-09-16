@@ -6,7 +6,8 @@ import { sql } from "../db";
 import { handoffReasons, summary, topics } from "./service";
 
 beforeEach(async () => {
-  await sql`delete from conversations`;
+  // Se limpia también lo de simulaciones: sus conversaciones contarían en estas métricas.
+  await sql`delete from simulations; delete from simulation_questions; delete from conversations`.simple();
 });
 afterAll(() => sql.end());
 
