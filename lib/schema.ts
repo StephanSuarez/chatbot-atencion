@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { bigserial, boolean, check, index, integer, pgTable, text, timestamp, uuid, vector } from "drizzle-orm/pg-core";
+import { bigserial, boolean, check, index, integer, pgTable, text, timestamp, uniqueIndex, uuid, vector } from "drizzle-orm/pg-core";
 
 // Única configuración del chatbot (FR-001): la base garantiza una sola fila (id siempre true).
 export const chatbotConfig = pgTable(
@@ -23,6 +23,10 @@ export const kbEntries = pgTable("kb_entries", {
   id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull(),
   content: text("content").notNull(),
+  // Si la entrada se aprendió de una conversación (005) queda su origen; al borrarla, la entrada se conserva.
+  learnedFromConversationId: uuid("learned_from_conversation_id").references(() => conversations.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -95,5 +99,30 @@ export const conversationEntries = pgTable(
   (t) => [
     check("conversation_entries_author", sql`${t.author} in ('cliente', 'bot', 'equipo', 'nota', 'evento')`),
     index("conversation_entries_conversation").on(t.conversationId, t.seq),
+  ],
+);
+
+// Propuestas de conocimiento (005): lo que el bot podría aprender de una conversación atendida por el
+// equipo. Solo entran en la base de conocimiento cuando una persona las aprueba.
+export const knowledgeProposals = pgTable(
+  "knowledge_proposals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    // Vacíos si la redacción falló: la propuesta queda pendiente con su motivo para reintentar (FR-009).
+    title: text("title"),
+    content: text("content"),
+    error: text("error"),
+    status: text("status", { enum: ["pendiente", "aprobada", "descartada"] }).notNull().default("pendiente"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("knowledge_proposals_status", sql`${t.status} in ('pendiente', 'aprobada', 'descartada')`),
+    // Una sola propuesta pendiente por conversación (FR-003), garantizado por la base.
+    uniqueIndex("knowledge_proposals_una_pendiente")
+      .on(t.conversationId)
+      .where(sql`${t.status} = 'pendiente'`),
   ],
 );
