@@ -4,13 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && if [ \"$VERCEL_ENV\" = production ]; then DATABASE_URL=\"$DATABASE_MIGRATION_URL\" drizzle-kit migrate; fi",
+    "build": "next build && if [ \"$VERCEL_ENV\" = production ]; then DATABASE_URL=\"$DATABASE_MIGRATION_URL\" node scripts/migrate.mjs; fi",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",

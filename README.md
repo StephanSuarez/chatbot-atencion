@@ -33,8 +33,8 @@ Los permisos que se piden son los mínimos: crear eventos (`calendar.events`) y 
 Variables de entorno en Vercel, **solo en Production** (las cadenas salen del botón «Connect» de Supabase):
 
 - `DATABASE_URL` — *Transaction pooler* (puerto 6543): la usa la app.
-- `DATABASE_MIGRATION_URL` — *Session pooler* (puerto 5432): la usa `drizzle-kit`, que abre su propia conexión con sentencias preparadas y el pooler de transacciones no las admite.
-- `ENCRYPTION_KEY` — una nueva, distinta de la local. Si se pierde, hay que volver a cargar la API key.
+- `DATABASE_MIGRATION_URL` — *Session pooler* (puerto 5432): la usan las migraciones, que Supabase recomienda correr por la conexión directa o por este pooler, no por el de transacciones.
+- `ENCRYPTION_KEY` — una nueva, distinta de la local. Si se pierde, hay que volver a cargar la API key y reconectar Google.
 
 `npm run build` aplica las migraciones después de compilar, solo cuando `VERCEL_ENV=production`. Si fallan, el despliegue
 no sale. Mientras corre el build, la versión anterior sigue atendiendo con el esquema nuevo: un cambio que borre o
