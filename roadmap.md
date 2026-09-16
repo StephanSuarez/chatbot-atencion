@@ -2,7 +2,7 @@
 
 Estado: **Aprobado** por el usuario el 2026-09-13. Modificado y reaprobado el 2026-09-13 (un solo chatbot; proveedor de LLM en 001).
 
-Estado actual: 001, 002 y 003 terminadas; 004 implementada (Jira KAN-25, pendiente de validación del usuario); 005 en ejecución.
+Estado actual: 001, 002 y 003 terminadas; 004 y 005 implementadas (Jira KAN-25 y KAN-35, pendientes de validación del usuario); 006 en ejecución.
 
 Objetivo: una plataforma con un único chatbot para una única empresa, que cualquiera configura con la información de la empresa, lo prueba en un chat dentro de la app, deriva a humano cuando corresponde, agenda citas y, por último, atiende por WhatsApp.
 
@@ -12,8 +12,8 @@ Objetivo: una plataforma con un único chatbot para una única empresa, que cual
 | 002 | Base de conocimiento (RAG) | Cargar información de la empresa como texto escrito o documentos en la configuración | 001 | Terminada (Jira KAN-10, 2026-09-15) |
 | 003 | Chat de prueba | Chat dentro de la app, abierto a todos, que conversa con el chatbot y responde solo con su información (sin inventar) | 001, 002 | Terminada (Jira KAN-18, 2026-09-15) |
 | 004 | Derivación a humano | Detectar cuándo derivar (no sabe, cliente enojado, pedido reiterado de una persona), avisar al usuario, notificar en la plataforma y permitir que una persona responda desde ahí. Guarda todas las conversaciones, con modo IA / humano | 003 | Implementada (Jira KAN-25, 2026-09-15); pendiente de validación del usuario |
-| 005 | Aprendizaje desde respuestas humanas | Que lo que responde la persona en una derivación alimente la base de conocimiento del bot, con revisión humana antes de aprender | 002, 004 | En ejecución (spec y plan aprobados 2026-09-15) |
-| 006 | Agendamiento con Google | Conectar una cuenta de Google en la configuración y permitir que el bot agende citas | 001, 003 | Pendiente |
+| 005 | Aprendizaje desde respuestas humanas | Que lo que responde la persona en una derivación alimente la base de conocimiento del bot, con revisión humana antes de aprender | 002, 004 | Implementada (Jira KAN-35, 2026-09-15); pendiente de validación del usuario |
+| 006 | Agendamiento con Google | Conectar una cuenta de Google en la configuración y permitir que el bot agende citas | 001, 003 | En ejecución (spec y plan aprobados 2026-09-15); la conexión real necesita credenciales de Google del usuario |
 | 007 | Canal WhatsApp | Conectar la cuenta de Meta/WhatsApp de la empresa para que el chatbot atienda por ese número | 003, 004, 006 | Pendiente |
 | 008 | Métricas de conversaciones | Ver cuántas conversaciones resolvió el bot frente a las derivadas, y cuáles son las preguntas más frecuentes | 004 | Pendiente |
 | 009 | Simulaciones del chatbot | Correr conversaciones simuladas para evaluar al bot; se guardan con origen «Simulación» | 004 | Pendiente |
