@@ -1,5 +1,25 @@
 import { sql } from "drizzle-orm";
-import { bigserial, boolean, check, index, integer, pgTable, text, timestamp, uniqueIndex, uuid, vector } from "drizzle-orm/pg-core";
+import {
+  bigint,
+  bigserial,
+  boolean,
+  check,
+  customType,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  vector,
+} from "drizzle-orm/pg-core";
+
+// Drizzle 0.45 no trae un tipo para bytes: se declara a mano. El driver los devuelve como Buffer.
+const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
+  dataType: () => "bytea",
+  fromDriver: (value) => new Uint8Array(value),
+});
 
 // Única configuración del chatbot (FR-001): la base garantiza una sola fila (id siempre true).
 export const chatbotConfig = pgTable(
@@ -111,6 +131,32 @@ export const conversationEntries = pgTable(
   (t) => [
     check("conversation_entries_author", sql`${t.author} in ('cliente', 'bot', 'equipo', 'nota', 'evento')`),
     index("conversation_entries_conversation").on(t.conversationId, t.seq),
+  ],
+);
+
+/**
+ * Adjunto de un mensaje (010). En tabla aparte y no como columnas de `conversation_entries` porque esas
+ * filas se consultan cada pocos segundos: los bytes no pueden viajar en ese camino (plan 010 §5).
+ */
+export const conversationAttachments = pgTable(
+  "conversation_attachments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // Único: un adjunto por mensaje (FR-001). Se borra con su mensaje, y este con su conversación.
+    entrySeq: bigint("entry_seq", { mode: "number" })
+      .notNull()
+      .unique()
+      .references(() => conversationEntries.seq, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    category: text("category", { enum: ["imagen", "audio", "documento"] }).notNull(),
+    // El tipo que impone el servidor al servir, nunca el que declaró quien subió el archivo.
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    data: bytea("data").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("conversation_attachments_category", sql`${t.category} in ('imagen', 'audio', 'documento')`),
   ],
 );
 
