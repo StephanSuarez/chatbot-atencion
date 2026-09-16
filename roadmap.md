@@ -15,7 +15,7 @@ Objetivo: una plataforma con un único chatbot para una única empresa, que cual
 | 005 | Aprendizaje desde respuestas humanas | Que lo que responde la persona en una derivación alimente la base de conocimiento del bot, con revisión humana antes de aprender | 002, 004 | Implementada (Jira KAN-35, 2026-09-15); pendiente de validación del usuario |
 | 006 | Agendamiento con Google | Conectar una cuenta de Google en la configuración y permitir que el bot agende citas | 001, 003 | Implementada (Jira KAN-41, 2026-09-15); **falta conectar una cuenta real**: requiere GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET del usuario (KAN-46) |
 | 007 | Canal WhatsApp | Conectar la cuenta de Meta/WhatsApp de la empresa para que el chatbot atienda por ese número | 003, 004, 006 | Pendiente |
-| 008 | Métricas de conversaciones | Ver cuántas conversaciones resolvió el bot frente a las derivadas, y cuáles son las preguntas más frecuentes | 004 | Pendiente |
+| 008 | Métricas de conversaciones | Ver cuántas conversaciones resolvió el bot frente a las derivadas, y cuáles son las preguntas más frecuentes | 004 | En ejecución (spec y plan aprobados 2026-09-15) |
 | 009 | Simulaciones del chatbot | Correr conversaciones simuladas para evaluar al bot; se guardan con origen «Simulación» | 004 | Pendiente |
 | 010 | Mensajes multimedia | Audios, imágenes y documentos en las conversaciones, como en WhatsApp | 004 | Pendiente |
 
