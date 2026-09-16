@@ -18,9 +18,11 @@ export interface Entry {
   createdAt: Date;
 }
 
+export type Origin = "chat_de_prueba" | "simulacion";
+
 export interface ConversationSummary {
   id: string;
-  origin: "chat_de_prueba";
+  origin: Origin;
   mode: Mode;
   derived: boolean;
   pending: boolean;
@@ -36,7 +38,8 @@ const lastClientAuthor = sql<string | null>`(
   where ${conversationEntries.conversationId} = ${conversations.id}
     and ${conversationEntries.author} in ('cliente', 'bot', 'equipo')
   order by ${conversationEntries.seq} desc limit 1)`;
-const pending = sql<boolean>`coalesce(${conversations.mode} = 'humano' and ${lastClientAuthor} = 'cliente', false)`;
+const pending = sql<boolean>`coalesce(
+  ${conversations.origin} <> 'simulacion' and ${conversations.mode} = 'humano' and ${lastClientAuthor} = 'cliente', false)`;
 
 const summary = {
   id: conversations.id,
