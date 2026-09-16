@@ -30,7 +30,7 @@ export interface NewAttachment {
   name: string;
   category: Category;
   contentType: string;
-  data: Uint8Array;
+  data: Uint8Array<ArrayBuffer>;
 }
 
 export interface Entry {
