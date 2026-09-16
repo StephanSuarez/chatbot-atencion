@@ -47,8 +47,14 @@ export function Detail({ id, companyName, onBack, onGone, onChanged }: Props) {
     setMode(result.mode);
     setDerived(result.derived);
     if (!result.entries.length) return;
-    lastSeq.current = result.entries[result.entries.length - 1].seq;
-    setEntries((before) => [...before, ...result.entries]);
+    lastSeq.current = Math.max(lastSeq.current, result.entries[result.entries.length - 1].seq);
+    // Dos consultas a la vez (en desarrollo React monta los efectos dos veces) traerían lo mismo:
+    // se descarta lo que ya está en pantalla en vez de duplicarlo.
+    setEntries((before) => {
+      const seen = new Set(before.map((entry) => entry.seq));
+      const nuevas = result.entries.filter((entry) => !seen.has(entry.seq));
+      return nuevas.length ? [...before, ...nuevas] : before;
+    });
   }, [id]);
 
   useEffect(() => {
