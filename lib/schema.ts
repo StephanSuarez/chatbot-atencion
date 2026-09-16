@@ -78,7 +78,7 @@ export const conversations = pgTable(
   "conversations",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    origin: text("origin", { enum: ["chat_de_prueba"] }).notNull(),
+    origin: text("origin", { enum: ["chat_de_prueba", "simulacion"] }).notNull(),
     mode: text("mode", { enum: ["ia", "humano"] }).notNull().default("ia"),
     derived: boolean("derived").notNull().default(false),
     // Motivo de la derivación (008): antes solo estaba dentro del texto del evento.
@@ -89,7 +89,7 @@ export const conversations = pgTable(
     lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    check("conversations_origin", sql`${t.origin} in ('chat_de_prueba')`),
+    check("conversations_origin", sql`${t.origin} in ('chat_de_prueba', 'simulacion')`),
     check("conversations_mode", sql`${t.mode} in ('ia', 'humano')`),
   ],
 );
@@ -138,3 +138,44 @@ export const knowledgeProposals = pgTable(
       .where(sql`${t.status} = 'pendiente'`),
   ],
 );
+
+// Simulaciones (009): preguntas de prueba, ejecuciones y sus resultados.
+export const simulationQuestions = pgTable(
+  "simulation_questions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    text: text("text").notNull(),
+    expectation: text("expectation", { enum: ["responde", "deriva", "ninguna"] }).notNull().default("ninguna"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("simulation_questions_expectation", sql`${t.expectation} in ('responde', 'deriva', 'ninguna')`)],
+);
+
+export const simulations = pgTable(
+  "simulations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    status: text("status", { enum: ["en_curso", "terminada", "interrumpida"] }).notNull().default("en_curso"),
+    total: integer("total").notNull(),
+    done: integer("done").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("simulations_status", sql`${t.status} in ('en_curso', 'terminada', 'interrumpida')`)],
+);
+
+export const simulationResults = pgTable("simulation_results", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  simulationId: uuid("simulation_id")
+    .notNull()
+    .references(() => simulations.id, { onDelete: "cascade" }),
+  // El texto se copia: el informe tiene que seguir siendo legible si luego se edita o borra la pregunta.
+  question: text("question").notNull(),
+  expectation: text("expectation", { enum: ["responde", "deriva", "ninguna"] }).notNull(),
+  answer: text("answer"),
+  derived: boolean("derived").notNull().default(false),
+  met: boolean("met"),
+  error: text("error"),
+  conversationId: uuid("conversation_id").references(() => conversations.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
