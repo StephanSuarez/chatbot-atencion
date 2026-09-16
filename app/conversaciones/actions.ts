@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { proposeFromConversation } from "../../lib/learning/propose";
 import { MAX_REPLY } from "./limits";
 import {
   deleteConversation,
@@ -57,6 +59,10 @@ export async function setModeAction(id: unknown, mode: unknown): Promise<Result>
   try {
     const changed = await setMode(id, mode);
     if (!changed) return { ok: false, error: "Esa conversación ya no existe." };
+    // Devolver la conversación al bot es la señal de «ya resolví»: se prepara lo que podría aprender (005).
+    if (mode === "ia" && typeof id === "string") {
+      after(() => proposeFromConversation(id).catch((e) => logError("no se pudo proponer conocimiento", e)));
+    }
     revalidatePath(PATH);
     return { ok: true };
   } catch (e) {
