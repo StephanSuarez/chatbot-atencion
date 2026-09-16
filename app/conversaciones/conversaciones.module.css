@@ -294,15 +294,6 @@
   color: #a3261b;
 }
 
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
 @media (max-width: 900px) {
   .filters {
     padding: 12px;
@@ -320,21 +311,4 @@
     width: 44px;
     height: 44px;
   }
-}
-
-.dangerButton {
-  height: 44px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 10px;
-  background: #a3261b;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.dangerButton:disabled {
-  opacity: 0.6;
-  cursor: default;
 }

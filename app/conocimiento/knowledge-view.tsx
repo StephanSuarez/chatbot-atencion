@@ -399,7 +399,7 @@ export function KnowledgeView({ entries, documents, pending, hasKey, maxDocument
         <p>El bot dejará de usar esta información para responder. No se puede deshacer.</p>
         <div className={c.dialogActions}>
           <button type="button" className={c.secondary} onClick={() => setConfirm(null)}>Cancelar</button>
-          <button type="button" className={s.dangerButton} onClick={remove} disabled={saving}>
+          <button type="button" className={c.dangerButton} onClick={remove} disabled={saving}>
             {saving ? "Eliminando…" : "Eliminar"}
           </button>
         </div>

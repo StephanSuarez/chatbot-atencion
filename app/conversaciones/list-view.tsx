@@ -87,7 +87,7 @@ export function ConversationsView({ conversations, filters }: Props) {
 
       <section className={s.panelWrap}>
         <div className={s.filters}>
-          <label className={s.srOnly} htmlFor="tipo">Tipo de conversación</label>
+          <label className={c.srOnly} htmlFor="tipo">Tipo de conversación</label>
           <select
             id="tipo"
             className={s.select}
@@ -206,7 +206,7 @@ export function ConversationsView({ conversations, filters }: Props) {
               <button type="button" className={c.secondary} onClick={() => setConfirm(null)} disabled={working}>
                 Cancelar
               </button>
-              <button type="button" className={s.dangerButton} onClick={() => remove(confirm)} disabled={working}>
+              <button type="button" className={c.dangerButton} onClick={() => remove(confirm)} disabled={working}>
                 {working ? "Borrando…" : "Borrar"}
               </button>
             </div>

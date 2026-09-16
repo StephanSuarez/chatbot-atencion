@@ -306,7 +306,7 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
           }}
         >
           <div className={s.fieldWrap}>
-            <label htmlFor="message" className={s.srOnly}>Mensaje</label>
+            <label htmlFor="message" className={c.srOnly}>Mensaje</label>
             <textarea
               id="message"
               rows={1}
