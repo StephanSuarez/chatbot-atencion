@@ -10,6 +10,8 @@ import {
 import { indexPending } from "../kb/indexer";
 import { countPendingChunks } from "../kb/service";
 import { EMBEDDING_MODEL, ProviderError, type ChatMessage, type ChatResult, type ProviderErrorKind } from "../providers";
+import { availability, bookAppointment, canSchedule, type BookReason } from "../scheduling/service";
+import { AGENDAR_CITA, parseAvailability, parseBooking, VER_DISPONIBILIDAD } from "./agendar";
 import { DERIVAR, FIRST_PERSON_REQUEST, parseDerivation, REASON_LABEL, type Derivation } from "./derivar";
 import { buildMessages, HISTORY_LIMIT } from "./prompt";
 import { findRelated, retrievalQuery, type FoundChunk } from "./retrieve";
@@ -61,6 +63,7 @@ export async function sendMessage(input: {
     // Red de seguridad del plan 002: lo que quedó pendiente se indexa antes de buscar.
     await indexPending();
     const pendingInfo = (await countPendingChunks()) > 0;
+    const scheduling = await canSchedule();
     const history = await recentHistory(conversationId, seq);
     const sources = await findRelated(retrievalQuery(history, message), provider, apiKey);
     const messages = buildMessages({
@@ -70,9 +73,51 @@ export async function sendMessage(input: {
       found: sources,
       history,
       message,
+      canSchedule: scheduling,
     });
     failingModel = config.model;
-    const result = await provider.chat(messages, config.model, apiKey, [DERIVAR]);
+    const tools = scheduling ? [DERIVAR, VER_DISPONIBILIDAD, AGENDAR_CITA] : [DERIVAR];
+    let result = await provider.chat(messages, config.model, apiKey, tools);
+
+    // Consultar horarios no termina el turno: se le devuelven al modelo para que redacte la respuesta.
+    if ("tool" in result && result.tool === VER_DISPONIBILIDAD.name) {
+      const day = parseAvailability(result.args);
+      const found = day ? await availability(day) : null;
+      const slots = found?.ok ? found.slots.map((slot) => slot.label).join(", ") : "";
+      messages.push({
+        role: "system",
+        content: slots
+          ? `Horarios libres el ${day}: ${slots}. Ofrécelos con estas horas exactas.`
+          : `No hay horarios libres el ${day}. Ofrece otro día dentro del horario de atención.`,
+      });
+      result = await provider.chat(messages, config.model, apiKey, tools);
+    }
+
+    // Agendar sí termina el turno: el servidor valida y crea la cita, y el bot confirma lo creado.
+    if ("tool" in result && result.tool === AGENDAR_CITA.name) {
+      const booking = parseBooking(result.args);
+      const booked = booking ? await bookAppointment(booking) : { ok: false as const, reason: "fuera_de_horario" as const };
+
+      if (booked.ok) {
+        await saveBotTurn(conversationId, { entries: [{ author: "bot", text: bookedMessage(booked.startIso) }] });
+        console.info(`[chat] conv=${conversationId}: cita creada`);
+        return answer(conversationId, seq, "ia", sources, pendingInfo);
+      }
+      // Un fallo de Google no puede acabar en una cita inventada: se deriva (FR-010).
+      if (booked.reason === "google" || booked.reason === "sin_conexion") {
+        await saveBotTurn(conversationId, {
+          entries: [
+            { author: "bot", text: "No pude agendar la cita en este momento. Una persona del equipo va a continuar esta conversación." },
+            { author: "nota", text: `Falló el agendamiento (${booked.reason}). El cliente pidió cita para ${booking?.startIso ?? "una fecha no válida"}.` },
+            { author: "evento", text: "El bot pasó la conversación a modo humano (falló el agendamiento)." },
+          ],
+          toHuman: true,
+        });
+        return answer(conversationId, seq, "humano", sources, pendingInfo);
+      }
+      await saveBotTurn(conversationId, { entries: [{ author: "bot", text: REJECTED[booked.reason] }] });
+      return answer(conversationId, seq, "ia", sources, pendingInfo);
+    }
     const derivation = derivationOf(result, sources.length, provider.id);
 
     if (derivation && !(derivation.reason === "pide_persona" && conversation.personRequests === 0)) {
@@ -149,6 +194,21 @@ async function recentHistory(conversationId: string, beforeSeq: number): Promise
     .slice(-HISTORY_LIMIT)
     .map((entry) => ({ role: ROLE[entry.author], content: entry.text.slice(0, MAX_HISTORY_CONTENT) }));
 }
+
+// Textos de la cita, en el idioma del cliente. La hora que se confirma es la que quedó creada (FR-008).
+const bookedMessage = (startIso: string) => {
+  const [day, time] = startIso.split("T");
+  const [year, month, dayOfMonth] = day.split("-");
+  return `Listo, tu cita quedó agendada para el ${dayOfMonth}/${month}/${year} a las ${time.slice(0, 5)}.`;
+};
+
+const REJECTED: Record<Exclude<BookReason, "google" | "sin_conexion">, string> = {
+  sin_horario: "Todavía no tenemos horarios de atención configurados para agendar citas.",
+  dia_no_atendido: "Ese día no atendemos. ¿Te sirve otro día dentro de nuestro horario?",
+  fuera_de_horario: "Ese horario está fuera de nuestro horario de atención. ¿Miramos otra hora?",
+  muy_pronto: "Ese horario es demasiado pronto para agendar. ¿Te sirve uno más adelante?",
+  ocupado: "Ese horario acaba de ocuparse. ¿Quieres que te ofrezca otros disponibles?",
+};
 
 const providerMessage = (kind: ProviderErrorKind, name: string, model: string) =>
   ({

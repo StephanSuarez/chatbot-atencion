@@ -34,6 +34,12 @@ const overlaps = (start: Date, end: Date, busy: Busy[]) =>
     return start < to && end > from;
   });
 
+/** Hay cuenta conectada y horario configurado: solo entonces el bot ofrece agendar (FR-005). */
+export async function canSchedule(): Promise<boolean> {
+  const connection = await getConnection();
+  return !!appCredentials() && !!connection?.agenda && !!(await getRefreshToken());
+}
+
 /** Huecos libres de un día: horario configurado, menos lo ocupado, respetando la anticipación mínima. */
 export function freeSlots(input: { day: string; agenda: Agenda; busy: Busy[]; now: Date }): Slot[] {
   const [year, month, dayOfMonth] = input.day.split("-").map(Number);
