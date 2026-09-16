@@ -5,6 +5,10 @@ import { Tabs } from "../tabs";
 import { ConversationsView } from "./list-view";
 import { rangeOf, type Preset } from "./range";
 
+// La fecha se formatea aquí, en el servidor: hacerlo en el navegador usa otra zona horaria y rompe
+// la hidratación (error visto en dev el 2026-09-15).
+const fecha = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+
 interface Props {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
@@ -31,7 +35,11 @@ export default async function Page({ searchParams }: Props) {
   return (
     <>
       <Tabs active="conversaciones" pending={pending} />
-      <ConversationsView conversations={conversations} filters={{ type, preset, from, to }} companyName={config.companyName} />
+      <ConversationsView
+        conversations={conversations.map((conversation) => ({ ...conversation, when: fecha.format(conversation.lastMessageAt) }))}
+        filters={{ type, preset, from, to }}
+        companyName={config.companyName}
+      />
     </>
   );
 }

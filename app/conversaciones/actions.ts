@@ -14,6 +14,8 @@ import {
 
 // Sin login (principio 11): cualquiera puede llamarlas con un POST. El servicio valida lo que llega.
 const PATH = "/conversaciones";
+// La hora se formatea en el servidor: en el navegador la zona horaria puede ser otra y rompe la hidratación.
+const hora = new Intl.DateTimeFormat("es-CO", { hour: "numeric", minute: "2-digit" });
 
 export type Result = { ok: boolean; error?: string };
 
@@ -35,14 +37,19 @@ export async function deleteConversationAction(id: unknown): Promise<Result> {
 export async function conversationAction(
   id: unknown,
   after: unknown,
-): Promise<{ entries: Entry[]; mode: Mode; derived: boolean; pending: boolean } | null> {
+): Promise<{ entries: (Entry & { when: string })[]; mode: Mode; derived: boolean; pending: boolean } | null> {
   const since = typeof after === "number" && Number.isFinite(after) ? after : 0;
   const [entries, conversation] = await Promise.all([
     getEntries(id, { after: since, forClient: false }),
     getConversation(id),
   ]);
   if (!entries || !conversation) return null;
-  return { entries, mode: conversation.mode, derived: conversation.derived, pending: conversation.pending };
+  return {
+    entries: entries.map((entry) => ({ ...entry, when: hora.format(entry.createdAt) })),
+    mode: conversation.mode,
+    derived: conversation.derived,
+    pending: conversation.pending,
+  };
 }
 
 export async function setModeAction(id: unknown, mode: unknown): Promise<Result> {

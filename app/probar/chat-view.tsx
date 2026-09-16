@@ -54,7 +54,7 @@ const remember = (id?: string) => {
 
 export function ChatView({ ready, missing, companyName }: { ready: boolean; missing: string[]; companyName: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [conversationId, setConversationId] = useState<string | undefined>(stored);
+  const [conversationId, setConversationId] = useState<string>();
   const [mode, setMode] = useState<"ia" | "humano">("ia");
   const [draft, setDraft] = useState("");
   const [openSources, setOpenSources] = useState<Set<number>>(new Set());
@@ -87,13 +87,21 @@ export function ChatView({ ready, missing, companyName }: { ready: boolean; miss
     setMessages((before) => [...before, ...result.entries.map(fromEntry)]);
   }, []);
 
+  // El id guardado se lee ya montados: en el servidor no existe localStorage, y un estado inicial
+  // calculado allí se quedaría vacío para siempre al hidratar (FR-005).
+  useEffect(() => {
+    void Promise.resolve().then(() => setConversationId((current) => current ?? stored()));
+  }, []);
+
   // Al abrir se recupera la conversación que recuerda el navegador (FR-005) y luego se consulta cada 3 s.
   useEffect(() => {
     if (!conversationId) return;
     const tick = () => {
       if (!busy.current && document.visibilityState === "visible") void pull(conversationId);
     };
-    tick();
+    // La primera carga va siempre: la pestaña puede abrirse en segundo plano y la conversación
+    // guardada tiene que aparecer igual (FR-005).
+    void pull(conversationId);
     const timer = setInterval(tick, POLL_MS);
     document.addEventListener("visibilitychange", tick);
     return () => {

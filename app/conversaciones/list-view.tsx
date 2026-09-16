@@ -17,8 +17,11 @@ interface Filters {
   to: string;
 }
 
+// La fecha llega ya escrita desde el servidor (ver page.tsx).
+type Row = ConversationSummary & { when: string };
+
 interface Props {
-  conversations: ConversationSummary[];
+  conversations: Row[];
   filters: Filters;
   companyName: string;
 }
@@ -30,13 +33,12 @@ const TYPE_LABEL: Record<TypeFilter, string> = {
 };
 
 const PRESETS: Preset[] = ["siempre", "hoy", "ayer", "7dias", "30dias", "personalizada"];
-const when = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
 export function ConversationsView({ conversations, filters, companyName }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string>();
-  const [confirm, setConfirm] = useState<ConversationSummary | null>(null);
+  const [confirm, setConfirm] = useState<Row | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [working, startWorking] = useTransition();
   const confirmRef = useRef<HTMLDialogElement>(null);
@@ -61,7 +63,7 @@ export function ConversationsView({ conversations, filters, companyName }: Props
     router.push(search ? `/conversaciones?${search}` : "/conversaciones");
   }
 
-  function remove(conversation: ConversationSummary) {
+  function remove(conversation: Row) {
     startWorking(async () => {
       const result = await call(() => deleteConversationAction(conversation.id), {
         ok: false,
@@ -175,7 +177,7 @@ export function ConversationsView({ conversations, filters, companyName }: Props
                   <li key={conversation.id} className={conversation.id === selected ? `${s.row} ${s.rowOn}` : s.row}>
                     <button type="button" className={s.rowButton} onClick={() => setSelected(conversation.id)}>
                       <div className={s.rowTop}>
-                        <span className={s.rowTitle}>Conversación del {when.format(conversation.lastMessageAt)}</span>
+                        <span className={s.rowTitle}>Conversación del {conversation.when}</span>
                         <div className={s.rowTags}>
                           {conversation.pending && <span className={s.tagPend}>Pendiente</span>}
                           {conversation.derived && <span className={s.tagDer}>Derivada</span>}
@@ -189,7 +191,7 @@ export function ConversationsView({ conversations, filters, companyName }: Props
                     <button
                       type="button"
                       className={s.trash}
-                      aria-label={`Borrar la conversación del ${when.format(conversation.lastMessageAt)}`}
+                      aria-label={`Borrar la conversación del ${conversation.when}`}
                       disabled={conversation.pending || working}
                       title={conversation.pending ? "Primero respóndela: espera a una persona" : "Borrar conversación"}
                       onClick={() => {
