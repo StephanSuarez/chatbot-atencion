@@ -8,6 +8,7 @@ import c from "../config.module.css";
 import { deleteConversationAction } from "./actions";
 import s from "./conversaciones.module.css";
 import { Detail } from "./detail";
+import { MetricsView, type Metrics } from "./metrics-view";
 import { PRESET_LABEL, type Preset } from "./range";
 
 interface Filters {
@@ -24,6 +25,7 @@ interface Props {
   conversations: Row[];
   filters: Filters;
   companyName: string;
+  metrics: Metrics;
 }
 
 const TYPE_LABEL: Record<TypeFilter, string> = {
@@ -34,10 +36,12 @@ const TYPE_LABEL: Record<TypeFilter, string> = {
 
 const PRESETS: Preset[] = ["siempre", "hoy", "ayer", "7dias", "30dias", "personalizada"];
 
-export function ConversationsView({ conversations, filters, companyName }: Props) {
+export function ConversationsView({ conversations, filters, companyName, metrics }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string>();
+  // Las métricas son los mismos datos y el mismo periodo, vistos de otra forma (008).
+  const [view, setView] = useState<"lista" | "metricas">("lista");
   const [confirm, setConfirm] = useState<Row | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [working, startWorking] = useTransition();
@@ -83,7 +87,29 @@ export function ConversationsView({ conversations, filters, companyName }: Props
       <header className={c.header}>
         <div className={c.titles}>
           <h1>Conversaciones</h1>
-          <p className={c.subtitle}>Todo lo que ha conversado tu chatbot. Las que esperan a una persona van primero.</p>
+          <p className={c.subtitle}>
+            {view === "lista"
+              ? "Todo lo que ha conversado tu chatbot. Las que esperan a una persona van primero."
+              : "Cómo va tu chatbot en el periodo que elijas."}
+          </p>
+        </div>
+        <div className={s.modes} role="group" aria-label="Cómo ver las conversaciones">
+          <button
+            type="button"
+            className={view === "lista" ? `${s.mode} ${s.modeOn}` : s.mode}
+            aria-pressed={view === "lista"}
+            onClick={() => setView("lista")}
+          >
+            Lista
+          </button>
+          <button
+            type="button"
+            className={view === "metricas" ? `${s.mode} ${s.modeOn}` : s.mode}
+            aria-pressed={view === "metricas"}
+            onClick={() => setView("metricas")}
+          >
+            Métricas
+          </button>
         </div>
       </header>
 
@@ -94,6 +120,9 @@ export function ConversationsView({ conversations, filters, companyName }: Props
       )}
 
       <section className={s.panelWrap}>
+        {view === "metricas" ? (
+          <MetricsView metrics={metrics} />
+        ) : (
         <div className={s.split}>
           <div className={selected ? `${s.listSide} ${s.hideOnMobile}` : s.listSide}>
             <div className={s.filters}>
@@ -225,6 +254,7 @@ export function ConversationsView({ conversations, filters, companyName }: Props
             )}
           </div>
         </div>
+        )}
       </section>
 
       <dialog ref={confirmRef} className={c.dialog} onClose={() => setConfirm(null)}>

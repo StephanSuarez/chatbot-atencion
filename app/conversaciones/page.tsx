@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { getConfig } from "../../lib/config-service";
 import { countPending, listConversations, type TypeFilter } from "../../lib/conversations/service";
+import { handoffReasons, summary, topics } from "../../lib/metrics/service";
 import { Tabs } from "../tabs";
 import { ConversationsView } from "./list-view";
 import { rangeOf, type Preset } from "./range";
@@ -26,10 +27,14 @@ export default async function Page({ searchParams }: Props) {
   const from = one(params.desde);
   const to = one(params.hasta);
 
-  const [conversations, pending, config] = await Promise.all([
-    listConversations({ type, ...rangeOf(preset, from, to) }),
+  const range = rangeOf(preset, from, to);
+  const [conversations, pending, config, resumen, motivos, temas] = await Promise.all([
+    listConversations({ type, ...range }),
     countPending(),
     getConfig(),
+    summary(range),
+    handoffReasons(range),
+    topics(range),
   ]);
 
   return (
@@ -39,6 +44,7 @@ export default async function Page({ searchParams }: Props) {
         conversations={conversations.map((conversation) => ({ ...conversation, when: fecha.format(conversation.lastMessageAt) }))}
         filters={{ type, preset, from, to }}
         companyName={config.companyName}
+        metrics={{ summary: resumen, reasons: motivos, topics: temas }}
       />
     </>
   );

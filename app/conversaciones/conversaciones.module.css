@@ -615,3 +615,209 @@
     min-height: 320px;
   }
 }
+
+/* ---------- Métricas (008) ---------- */
+
+.modes {
+  display: flex;
+  gap: 2px;
+  background: #f3efe8;
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.mode {
+  border: 0;
+  background: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6f655c;
+  cursor: pointer;
+}
+
+.modeOn {
+  background: #fff;
+  color: #221c17;
+  box-shadow: 0 1px 2px rgba(34, 28, 23, 0.1);
+}
+
+.metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 20px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.metricCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px;
+  border: 1px solid #ece6dd;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.metricCard strong {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.metricCard span {
+  font-size: 13px;
+  color: #6f655c;
+}
+
+.cardOk strong {
+  color: #2f7a4f;
+}
+
+.cardWarn strong {
+  color: #7a5a12;
+}
+
+.cardAlert {
+  border-color: #f3cfc9;
+  background: #fdf3f1;
+}
+
+.cardAlert strong {
+  color: #a3261b;
+}
+
+.rate {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rateBar {
+  height: 10px;
+  border-radius: 999px;
+  background: #f3efe8;
+  overflow: hidden;
+}
+
+.rateFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #2f7a4f;
+}
+
+.rateText {
+  font-size: 14px;
+  color: #6f655c;
+}
+
+.metricsBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.metricsTitle {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.reasons,
+.topics,
+.examples {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reason {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid #ece6dd;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 14px;
+}
+
+.reason strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.topics {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.topic {
+  border: 1px solid #ece6dd;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.topicHead {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.topicTitle {
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.topicCounts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.topicCount {
+  min-width: 28px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: #f3efe8;
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.examples {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 14px 14px;
+  font-size: 13px;
+  color: #6f655c;
+  line-height: 1.5;
+}
