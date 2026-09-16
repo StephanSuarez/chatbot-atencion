@@ -2,7 +2,7 @@
 
 Estado: **Aprobado** por el usuario el 2026-09-13. Modificado y reaprobado el 2026-09-13 (un solo chatbot; proveedor de LLM en 001).
 
-Estado actual: 001, 002 y 003 terminadas; 004, 005 y 006 implementadas (Jira KAN-25, KAN-35 y KAN-41), pendientes de validación del usuario. La 006 además necesita credenciales de Google para conectarse de verdad.
+Estado actual: 001, 002 y 003 terminadas; 004, 005, 006, 008 y 009 implementadas (Jira KAN-25, KAN-35, KAN-41, KAN-48 y KAN-51), pendientes de validación del usuario. La 006 además necesita credenciales de Google para conectarse de verdad.
 
 Objetivo: una plataforma con un único chatbot para una única empresa, que cualquiera configura con la información de la empresa, lo prueba en un chat dentro de la app, deriva a humano cuando corresponde, agenda citas y, por último, atiende por WhatsApp.
 
@@ -16,7 +16,7 @@ Objetivo: una plataforma con un único chatbot para una única empresa, que cual
 | 006 | Agendamiento con Google | Conectar una cuenta de Google en la configuración y permitir que el bot agende citas | 001, 003 | Implementada (Jira KAN-41, 2026-09-15); **falta conectar una cuenta real**: requiere GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET del usuario (KAN-46) |
 | 007 | Canal WhatsApp | Conectar la cuenta de Meta/WhatsApp de la empresa para que el chatbot atienda por ese número | 003, 004, 006 | Pendiente |
 | 008 | Métricas de conversaciones | Ver cuántas conversaciones resolvió el bot frente a las derivadas, y cuáles son las preguntas más frecuentes | 004 | Implementada (Jira KAN-48, 2026-09-15); pendiente de validación del usuario |
-| 009 | Simulaciones del chatbot | Correr conversaciones simuladas para evaluar al bot; se guardan con origen «Simulación» | 004 | En ejecución (spec y plan aprobados 2026-09-15) |
+| 009 | Simulaciones del chatbot | Correr conversaciones simuladas para evaluar al bot; se guardan con origen «Simulación» | 004 | Implementada (Jira KAN-51, 2026-09-15); pendiente de validación del usuario, incluida una corrida real (consume saldo de la API key) |
 | 010 | Mensajes multimedia | Audios, imágenes y documentos en las conversaciones, como en WhatsApp | 004 | Pendiente |
 
 ## Notas de alcance
