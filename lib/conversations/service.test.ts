@@ -5,6 +5,7 @@ import { sql } from "../db";
 import {
   countPending,
   deleteConversation,
+  getAttachment,
   getConversation,
   getEntries,
   listConversations,
@@ -12,6 +13,7 @@ import {
   saveClientMessage,
   saveTeamReply,
   setMode,
+  type NewAttachment,
 } from "./service";
 
 beforeEach(async () => {
@@ -202,5 +204,92 @@ describe("borrar (FR-006)", () => {
     await setMode(conversationId, "humano");
     expect(await deleteConversation(conversationId)).toBe(false);
     expect(await getConversation(conversationId)).not.toBeNull();
+  });
+});
+
+describe("adjuntos (010)", () => {
+  const foto: NewAttachment = {
+    name: "recibo.png",
+    category: "imagen",
+    contentType: "image/png",
+    data: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xff, 0x00, 0x42]),
+  };
+
+  const conAdjunto = (text: string, attachment: NewAttachment = foto) =>
+    saveClientMessage({ clientMessageId: randomUUID(), text, attachment });
+
+  const count = async (table: "conversation_attachments" | "conversation_entries") =>
+    (await sql`select count(*)::int as n from ${sql(table)}`)[0].n;
+
+  it("el mensaje lleva la ficha del adjunto, sin los bytes", async () => {
+    const { conversationId } = await conAdjunto("mira esto");
+    const [entry] = (await getEntries(conversationId, { forClient: true }))!;
+
+    expect(entry.text).toBe("mira esto");
+    expect(entry.attachment).toEqual({
+      id: expect.any(String),
+      name: "recibo.png",
+      category: "imagen",
+      contentType: "image/png",
+      sizeBytes: foto.data.length,
+    });
+  });
+
+  it("los bytes se leen aparte y vuelven idénticos", async () => {
+    const { conversationId } = await conAdjunto("mira esto");
+    const [entry] = (await getEntries(conversationId, { forClient: true }))!;
+
+    const stored = await getAttachment(entry.attachment!.id);
+    expect(stored).toMatchObject({ name: "recibo.png", contentType: "image/png", category: "imagen" });
+    expect(stored!.data).toEqual(foto.data);
+  });
+
+  it("un mensaje sin adjunto no trae ficha", async () => {
+    const { conversationId } = await newMessage("solo texto");
+    const [entry] = (await getEntries(conversationId, { forClient: true }))!;
+    expect(entry.attachment).toBeUndefined();
+  });
+
+  it("un mensaje solo con archivo, sin texto, es válido", async () => {
+    const { conversationId } = await conAdjunto("");
+    const [entry] = (await getEntries(conversationId, { forClient: true }))!;
+    expect(entry.text).toBe("");
+    expect(entry.attachment?.name).toBe("recibo.png");
+  });
+
+  it("reintentar el mismo mensaje no duplica el adjunto", async () => {
+    const clientMessageId = randomUUID();
+    const first = await saveClientMessage({ clientMessageId, text: "mira", attachment: foto });
+    const retry = await saveClientMessage({ clientMessageId, text: "mira", attachment: foto });
+
+    expect(retry).toMatchObject({ conversationId: first.conversationId, duplicate: true });
+    expect(await count("conversation_attachments")).toBe(1);
+    expect(await count("conversation_entries")).toBe(1);
+  });
+
+  it("el equipo puede responder con un archivo", async () => {
+    const { conversationId } = await newMessage("¿me mandas la factura?");
+    await setMode(conversationId, "humano");
+
+    const pdf: NewAttachment = {
+      name: "factura.pdf",
+      category: "documento",
+      contentType: "application/pdf",
+      data: new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]),
+    };
+    expect(await saveTeamReply(conversationId, "Aquí la tienes", pdf)).toBe(true);
+
+    const entries = (await getEntries(conversationId, { forClient: true }))!;
+    const reply = entries.at(-1)!;
+    expect(reply).toMatchObject({ author: "equipo", text: "Aquí la tienes" });
+    expect(reply.attachment).toMatchObject({ name: "factura.pdf", category: "documento" });
+  });
+
+  it("borrar la conversación borra sus adjuntos (FR-012)", async () => {
+    const { conversationId } = await conAdjunto("mira esto");
+    expect(await count("conversation_attachments")).toBe(1);
+
+    expect(await deleteConversation(conversationId)).toBe(true);
+    expect(await count("conversation_attachments")).toBe(0);
   });
 });

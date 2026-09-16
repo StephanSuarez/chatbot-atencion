@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gt, gte, inArray, lt, sql, type SQL } from "drizzle-orm";
 import { db } from "../db";
-import { conversationEntries, conversations } from "../schema";
+import type { Category } from "../attachments/validate";
+import { conversationAttachments, conversationEntries, conversations } from "../schema";
 
 // Reglas de guardado de la spec 004 (plan §5, §6). No llama al modelo: eso lo hace el servicio de chat.
 
@@ -11,11 +12,50 @@ export type TypeFilter = "todas" | "derivadas" | "sin_derivar";
 // Lo que ve el cliente. Notas y eventos son solo para el equipo (FR-012, FR-016).
 export const CLIENT_AUTHORS: Author[] = ["cliente", "bot", "equipo"];
 
+// La categoría la decide el validador (`lib/attachments`): se reexporta para no tener dos uniones que
+// puedan divergir en silencio.
+export type { Category };
+
+/** La ficha del adjunto: lo que viaja con los mensajes. Los bytes se piden aparte, por su id. */
+export interface Attachment {
+  id: string;
+  name: string;
+  category: Category;
+  contentType: string;
+  sizeBytes: number;
+}
+
+/** Un adjunto ya validado (`lib/attachments`), listo para guardarse. */
+export interface NewAttachment {
+  name: string;
+  category: Category;
+  contentType: string;
+  data: Uint8Array;
+}
+
 export interface Entry {
   seq: number;
   author: Author;
   text: string;
   createdAt: Date;
+  attachment?: Attachment;
+}
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Guarda el adjunto dentro de la transacción de su mensaje: si esto falla, el mensaje tampoco queda
+ * (FR-014). Lo usan tanto el mensaje del cliente como la respuesta del equipo.
+ */
+function attach(tx: Tx, entrySeq: number, file: NewAttachment) {
+  return tx.insert(conversationAttachments).values({
+    entrySeq,
+    name: file.name,
+    category: file.category,
+    contentType: file.contentType,
+    sizeBytes: file.data.length,
+    data: file.data,
+  });
 }
 
 export type Origin = "chat_de_prueba" | "simulacion";
@@ -65,6 +105,7 @@ export async function saveClientMessage(input: {
   clientMessageId: string;
   text: string;
   origin?: Origin;
+  attachment?: NewAttachment;
 }) {
   return db.transaction(async (tx) => {
     const existing = isUuid(input.conversationId)
@@ -81,6 +122,7 @@ export async function saveClientMessage(input: {
       .onConflictDoNothing({ target: conversationEntries.clientMessageId })
       .returning({ seq: conversationEntries.seq });
     if (inserted) {
+      if (input.attachment) await attach(tx, inserted.seq, input.attachment);
       await tx.update(conversations).set({ lastMessageAt: new Date() }).where(eq(conversations.id, conversationId));
       return { conversationId, seq: inserted.seq, duplicate: false };
     }
@@ -153,7 +195,11 @@ export async function setMode(conversationId: unknown, mode: Mode): Promise<bool
   });
 }
 
-export async function saveTeamReply(conversationId: unknown, text: string): Promise<boolean> {
+export async function saveTeamReply(
+  conversationId: unknown,
+  text: string,
+  attachment?: NewAttachment,
+): Promise<boolean> {
   if (!isUuid(conversationId)) return false;
   return db.transaction(async (tx) => {
     const [row] = await tx
@@ -162,7 +208,11 @@ export async function saveTeamReply(conversationId: unknown, text: string): Prom
       .where(eq(conversations.id, conversationId))
       .for("update");
     if (row?.mode !== "humano") return false;
-    await tx.insert(conversationEntries).values({ conversationId, author: "equipo", text });
+    const [inserted] = await tx
+      .insert(conversationEntries)
+      .values({ conversationId, author: "equipo", text })
+      .returning({ seq: conversationEntries.seq });
+    if (attachment) await attach(tx, inserted.seq, attachment);
     await tx.update(conversations).set({ lastMessageAt: new Date() }).where(eq(conversations.id, conversationId));
     return true;
   });
@@ -175,16 +225,44 @@ export async function getEntries(conversationId: unknown, opts: { after?: number
   const conditions: SQL[] = [eq(conversationEntries.conversationId, conversationId)];
   if (opts.after !== undefined) conditions.push(gt(conversationEntries.seq, opts.after));
   if (opts.forClient) conditions.push(inArray(conversationEntries.author, CLIENT_AUTHORS));
-  return db
+  const rows = await db
     .select({
       seq: conversationEntries.seq,
       author: conversationEntries.author,
       text: conversationEntries.text,
       createdAt: conversationEntries.createdAt,
+      attachmentId: conversationAttachments.id,
+      name: conversationAttachments.name,
+      category: conversationAttachments.category,
+      contentType: conversationAttachments.contentType,
+      sizeBytes: conversationAttachments.sizeBytes,
     })
     .from(conversationEntries)
+    // Solo la ficha del adjunto: los bytes se piden por su propia URL, así que el sondeo no los arrastra.
+    .leftJoin(conversationAttachments, eq(conversationAttachments.entrySeq, conversationEntries.seq))
     .where(and(...conditions))
     .orderBy(asc(conversationEntries.seq));
+
+  return rows.map(({ attachmentId, name, category, contentType, sizeBytes, ...entry }) =>
+    attachmentId
+      ? { ...entry, attachment: { id: attachmentId, name: name!, category: category!, contentType: contentType!, sizeBytes: sizeBytes! } }
+      : entry,
+  );
+}
+
+/** Los bytes de un adjunto, para servirlo. Es el único sitio que los lee. */
+export async function getAttachment(id: unknown) {
+  if (!isUuid(id)) return null;
+  const [row] = await db
+    .select({
+      name: conversationAttachments.name,
+      category: conversationAttachments.category,
+      contentType: conversationAttachments.contentType,
+      data: conversationAttachments.data,
+    })
+    .from(conversationAttachments)
+    .where(eq(conversationAttachments.id, id));
+  return row ?? null;
 }
 
 /** Pendientes primero; el resto de la más reciente a la más antigua (FR-019). `to` es exclusivo. */
