@@ -2,7 +2,7 @@
 
 Estado: **Aprobado** por el usuario el 2026-09-13. Modificado y reaprobado el 2026-09-13 (un solo chatbot; proveedor de LLM en 001).
 
-Estado actual: 001, 002 y 003 terminadas; 004, 005, 006, 008 y 009 implementadas (Jira KAN-25, KAN-35, KAN-41, KAN-48 y KAN-51), pendientes de validación del usuario. La 006 además necesita credenciales de Google para conectarse de verdad.
+Estado actual: 001, 002 y 003 terminadas; 004, 005, 006, 008, 009 y 010 implementadas (Jira KAN-25, KAN-35, KAN-41, KAN-48, KAN-51 y KAN-55), pendientes de validación del usuario. La 006 además necesita credenciales de Google para conectarse de verdad. Solo queda pendiente la 007 (WhatsApp), que necesita las credenciales de Meta.
 
 Objetivo: una plataforma con un único chatbot para una única empresa, que cualquiera configura con la información de la empresa, lo prueba en un chat dentro de la app, deriva a humano cuando corresponde, agenda citas y, por último, atiende por WhatsApp.
 
@@ -17,7 +17,7 @@ Objetivo: una plataforma con un único chatbot para una única empresa, que cual
 | 007 | Canal WhatsApp | Conectar la cuenta de Meta/WhatsApp de la empresa para que el chatbot atienda por ese número | 003, 004, 006 | Pendiente |
 | 008 | Métricas de conversaciones | Ver cuántas conversaciones resolvió el bot frente a las derivadas, y cuáles son las preguntas más frecuentes | 004 | Implementada (Jira KAN-48, 2026-09-15); pendiente de validación del usuario |
 | 009 | Simulaciones del chatbot | Correr conversaciones simuladas para evaluar al bot; se guardan con origen «Simulación» | 004 | Implementada (Jira KAN-51, 2026-09-15); pendiente de validación del usuario, incluida una corrida real (consume saldo de la API key) |
-| 010 | Mensajes multimedia | Audios, imágenes y documentos en las conversaciones, como en WhatsApp | 004 | En ejecución (spec y plan aprobados por delegación 2026-09-15) |
+| 010 | Mensajes multimedia | Audios, imágenes y documentos en las conversaciones, como en WhatsApp | 004 | Implementada (Jira KAN-55, 2026-09-16); validada con 34 de 34 comprobaciones (`scripts/validacion-010.md`), pendiente de validación del usuario |
 
 ## Notas de alcance
 
