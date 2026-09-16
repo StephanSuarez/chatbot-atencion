@@ -128,6 +128,7 @@ export async function sendMessage(input: {
           { author: "evento", text: `El bot pasó la conversación a modo humano (${REASON_LABEL[derivation.reason]}).` },
         ],
         toHuman: true,
+        handoffReason: derivation.reason,
       });
     } else if (derivation) {
       // Primer pedido de persona: el bot ofrece ayudar él mismo y el servidor anota el pedido (FR-009).

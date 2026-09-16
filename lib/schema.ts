@@ -81,6 +81,8 @@ export const conversations = pgTable(
     origin: text("origin", { enum: ["chat_de_prueba"] }).notNull(),
     mode: text("mode", { enum: ["ia", "humano"] }).notNull().default("ia"),
     derived: boolean("derived").notNull().default(false),
+    // Motivo de la derivación (008): antes solo estaba dentro del texto del evento.
+    handoffReason: text("handoff_reason", { enum: ["no_sabe", "enojo", "pide_persona"] }),
     // Pedidos de "hablar con una persona" desde que está en modo IA (plan §4): lo cuenta el servidor.
     personRequests: integer("person_requests").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
