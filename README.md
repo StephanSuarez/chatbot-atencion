@@ -28,6 +28,18 @@ Después, en «Tu chatbot» → «Agendamiento de citas», conecta la cuenta y d
 Los permisos que se piden son los mínimos: crear eventos (`calendar.events`) y consultar disponibilidad
 (`calendar.freebusy`). El permiso se guarda cifrado, igual que la API key.
 
+## Despliegue (Vercel + Supabase)
+
+Variables de entorno en Vercel, **solo en Production** (las cadenas salen del botón «Connect» de Supabase):
+
+- `DATABASE_URL` — *Transaction pooler* (puerto 6543): la usa la app.
+- `DATABASE_MIGRATION_URL` — *Session pooler* (puerto 5432): la usa `drizzle-kit`, que abre su propia conexión con sentencias preparadas y el pooler de transacciones no las admite.
+- `ENCRYPTION_KEY` — una nueva, distinta de la local. Si se pierde, hay que volver a cargar la API key.
+
+`npm run build` aplica las migraciones después de compilar, solo cuando `VERCEL_ENV=production`. Si fallan, el despliegue
+no sale. Mientras corre el build, la versión anterior sigue atendiendo con el esquema nuevo: un cambio que borre o
+renombre columnas se hace en dos despliegues.
+
 ## Scripts
 
 - `npm test` — Vitest (unitarios e integración; requiere la base levantada)
