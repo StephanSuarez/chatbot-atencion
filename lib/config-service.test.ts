@@ -5,9 +5,21 @@ import { ProviderError } from "./providers/http";
 
 // Repositorio en memoria y proveedor falso: aquí se prueban las reglas, no la base ni la red.
 const store = vi.hoisted(() => ({ row: null as ConfigRow | null }));
+// Lo de Google y el horario de atención no los toca guardar la configuración (006): van en null.
+const sinGoogle = {
+  googleRefreshTokenEncrypted: null,
+  googleEmail: null,
+  googleCalendarId: null,
+  agendaDays: null,
+  agendaStart: null,
+  agendaEnd: null,
+  agendaSlotMinutes: null,
+  agendaMinNoticeHours: null,
+} as const;
 vi.mock("./config-repository", () => ({
   readConfig: async () => store.row,
-  saveConfig: async (values: ConfigValues) => (store.row = { id: true, updatedAt: new Date(), ...values }),
+  saveConfig: async (values: ConfigValues) =>
+    (store.row = { id: true, updatedAt: new Date(), ...sinGoogle, ...values }),
 }));
 
 const fake = vi.hoisted(() => ({

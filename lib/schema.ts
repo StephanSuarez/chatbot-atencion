@@ -13,6 +13,16 @@ export const chatbotConfig = pgTable(
     // Cifrada con AES-256-GCM (lib/crypto.ts); los últimos 4 caracteres van aparte para enmascarar sin descifrar.
     apiKeyEncrypted: text("api_key_encrypted"),
     apiKeyLast4: text("api_key_last4"),
+    // Cuenta de Google conectada (006). El permiso se guarda cifrado igual que la API key.
+    googleRefreshTokenEncrypted: text("google_refresh_token_encrypted"),
+    googleEmail: text("google_email"),
+    googleCalendarId: text("google_calendar_id"),
+    // Horario de atención para las citas: sin esto el bot no agenda (FR-005).
+    agendaDays: text("agenda_days"),
+    agendaStart: text("agenda_start"),
+    agendaEnd: text("agenda_end"),
+    agendaSlotMinutes: integer("agenda_slot_minutes"),
+    agendaMinNoticeHours: integer("agenda_min_notice_hours"),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   () => [check("chatbot_config_single_row", sql`id = true`)],

@@ -76,8 +76,8 @@ No se guarda ninguna tabla de citas: la cita vive en el calendario de Google. De
 
 **Google Calendar** *(endpoint de creación verificado el 2026-09-15)*
 - Crear: `POST https://www.googleapis.com/calendar/v3/calendars/{calendarId}/events`, con `start` y `end` como `dateTime` + `timeZone`.
-- Permiso pedido: `https://www.googleapis.com/auth/calendar.events`, el mínimo que permite crear y leer eventos.
-- **Consulta de ocupación: no verificada todavía.** Se usará el listado de eventos del día (`GET .../events` con `timeMin`, `timeMax`, `singleEvents=true`) o `freeBusy`; **se confirma con la documentación al implementar**, igual que se hizo con los códigos de error de los proveedores en la 003.
+- Consulta de ocupación *(verificado el 2026-09-15)*: `POST https://www.googleapis.com/calendar/v3/freeBusy` con `timeMin`, `timeMax` e `items`; devuelve por calendario un array `busy` con `start` y `end`.
+- **Permisos pedidos: `https://www.googleapis.com/auth/calendar.events` y `https://www.googleapis.com/auth/calendar.freebusy`.** El primero crea eventos; el segundo consulta la ocupación. `calendar.events` **no** está entre los scopes que acepta `freeBusy` (verificado en su documentación), así que hacen falta los dos. Siguen siendo menos que `calendar` completo (principio 3).
 
 **Route Handler** *(verificado en la documentación de Next 16.3.5 incluida en el repo)*: `app/api/google/callback/route.ts` con `export async function GET(request: Request)`. No se cachea por defecto.
 
@@ -140,8 +140,8 @@ Log por intento de cita: si se creó o no, el motivo del rechazo y el tipo de er
 | El modelo interpreta mal «mañana a las 3» | Cita en hora equivocada | El servidor valida y el bot confirma fecha y hora exactas antes y después de crear |
 | El evento se crea y la respuesta se pierde | Cita huérfana | Anotado; se puede mitigar buscando por un identificador propio en el evento |
 | Zona horaria distinta entre servidor y calendario | Citas con una hora de desfase | Se usa la zona horaria del calendario, y se prueba con una zona distinta a la del servidor |
-| Consulta de ocupación aún sin verificar | Retrabajo pequeño al implementar | Se confirma con la documentación antes de escribir el cliente |
+| Dos permisos en vez de uno | La pantalla de consentimiento pide algo más | Verificado que `freeBusy` no acepta `calendar.events`; la alternativa (`calendar` completo) sería más permisiva |
 
 ## 14. Preguntas técnicas abiertas
 
-- Cómo se consulta la ocupación (listado de eventos o `freeBusy`): se decide al implementar, leyendo la documentación oficial.
+Ninguna: la consulta de ocupación quedó verificada (`freeBusy`) y con ella los permisos necesarios.
