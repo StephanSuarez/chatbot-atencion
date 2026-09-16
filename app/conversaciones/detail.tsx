@@ -32,11 +32,16 @@ export function Detail({ id, companyName, onBack, onGone, onChanged }: Props) {
   const lastSeq = useRef(0);
   const busy = useRef(false);
   const endRef = useRef<HTMLDivElement>(null);
+  // El padre pasa funciones nuevas en cada render: si el sondeo dependiera de ellas, se reiniciaría siempre.
+  const handlers = useRef({ onGone, onChanged });
+  useEffect(() => {
+    handlers.current = { onGone, onChanged };
+  });
 
   const pull = useCallback(async () => {
     const result = await call(() => conversationAction(id, lastSeq.current), undefined);
     if (result === null) {
-      onGone();
+      handlers.current.onGone();
       return;
     }
     if (!result) return;
@@ -45,7 +50,7 @@ export function Detail({ id, companyName, onBack, onGone, onChanged }: Props) {
     if (!result.entries.length) return;
     lastSeq.current = result.entries[result.entries.length - 1].seq;
     setEntries((before) => [...before, ...result.entries]);
-  }, [id, onGone]);
+  }, [id]);
 
   useEffect(() => {
     const tick = () => {
@@ -73,7 +78,7 @@ export function Detail({ id, companyName, onBack, onGone, onChanged }: Props) {
       if (!result.ok) setError(result.error ?? "No se pudo cambiar el modo.");
       busy.current = false;
       await pull();
-      onChanged();
+      handlers.current.onChanged();
     });
   }
 
@@ -88,7 +93,7 @@ export function Detail({ id, companyName, onBack, onGone, onChanged }: Props) {
       else setError(result.error ?? "No se pudo enviar.");
       busy.current = false;
       await pull();
-      onChanged();
+      handlers.current.onChanged();
     });
   }
 
