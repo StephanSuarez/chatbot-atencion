@@ -1,18 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import type { FoundChunk } from "../../lib/chat/retrieve";
+import type { Entry } from "../../lib/conversations/service";
 import { call } from "../call";
 import { joinEs, thousands } from "../config-form";
 import c from "../config.module.css";
-import { sendMessageAction } from "./actions";
+import { newEntriesAction, sendMessageAction } from "./actions";
 import s from "./chat.module.css";
 
 const MAX_MESSAGE = 1000;
+// Cada 3 s se preguntan los mensajes nuevos del equipo (plan 004 §3). No llama al modelo: no gasta saldo.
+const POLL_MS = 3000;
+const STORAGE_KEY = "chatbot.conversacion";
 
 interface Message {
   role: "user" | "assistant";
+  author?: Entry["author"];
   content: string;
   sources?: FoundChunk[];
   failed?: string;
@@ -20,30 +25,85 @@ interface Message {
   clientMessageId?: string;
 }
 
-const newId = () => crypto.randomUUID();
-
 // Los pedazos llegan con su encabezado de origen («[menu.txt]»); el origen ya se muestra aparte.
 const withoutHeader = (text: string) => text.replace(/^\[[^\]\n]*\]\n/, "");
 
-export function ChatView({ ready, missing }: { ready: boolean; missing: string[] }) {
+const fromEntry = (entry: Entry): Message => ({
+  role: entry.author === "cliente" ? "user" : "assistant",
+  author: entry.author,
+  content: entry.text,
+});
+
+// Lo guardado solo existe en el navegador: en el servidor no hay localStorage y se empieza sin conversación.
+const stored = (): string | undefined => {
+  try {
+    return localStorage.getItem(STORAGE_KEY) ?? undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const remember = (id?: string) => {
+  try {
+    if (id) localStorage.setItem(STORAGE_KEY, id);
+    else localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Navegador sin almacenamiento: la conversación solo dura lo que dure la página.
+  }
+};
+
+export function ChatView({ ready, missing, companyName }: { ready: boolean; missing: string[]; companyName: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [conversationId, setConversationId] = useState<string>();
+  const [conversationId, setConversationId] = useState<string | undefined>(stored);
+  const [mode, setMode] = useState<"ia" | "humano">("ia");
   const [draft, setDraft] = useState("");
   const [openSources, setOpenSources] = useState<Set<number>>(new Set());
   const [pendingInfo, setPendingInfo] = useState(false);
   const [blocked, setBlocked] = useState<string[] | null>(ready ? null : missing);
   const [sending, startSending] = useTransition();
   const endRef = useRef<HTMLDivElement>(null);
+  const lastSeq = useRef(0);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages, sending]);
 
+  // Trae lo que haya escrito el equipo desde la última entrada conocida; null = la conversación ya no existe.
+  const pull = useCallback(async (id: string) => {
+    const result = await call(() => newEntriesAction(id, lastSeq.current), undefined);
+    if (result === null) {
+      remember(undefined);
+      setConversationId(undefined);
+      setMessages([]);
+      lastSeq.current = 0;
+      return;
+    }
+    if (!result) return;
+    setMode(result.mode);
+    if (!result.entries.length) return;
+    lastSeq.current = result.entries[result.entries.length - 1].seq;
+    setMessages((before) => [...before, ...result.entries.map(fromEntry)]);
+  }, []);
+
+  // Al abrir se recupera la conversación que recuerda el navegador (FR-005) y luego se consulta cada 3 s.
+  useEffect(() => {
+    if (!conversationId) return;
+    const tick = () => {
+      if (document.visibilityState === "visible") void pull(conversationId);
+    };
+    tick();
+    const timer = setInterval(tick, POLL_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [conversationId, pull]);
+
   const tooLong = draft.length > MAX_MESSAGE;
 
-  // La conversación se guarda en el servidor (004, FR-001): aquí solo se recuerda su id mientras dura la página.
   function send(text: string, before: Message[], retryId?: string) {
-    const clientMessageId = retryId ?? newId();
+    const clientMessageId = retryId ?? crypto.randomUUID();
     setMessages([...before, { role: "user", content: text, clientMessageId }]);
     startSending(async () => {
       const result = await call(() => sendMessageAction({ conversationId, clientMessageId, message: text }), {
@@ -52,9 +112,11 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
       });
       if (result.ok) {
         setConversationId(result.conversationId);
-        const replies: Message[] = result.entries.map((entry, i) => ({
-          role: "assistant" as const,
-          content: entry.text,
+        remember(result.conversationId);
+        setMode(result.mode);
+        if (result.entries.length) lastSeq.current = result.entries[result.entries.length - 1].seq;
+        const replies = result.entries.map((entry, i) => ({
+          ...fromEntry(entry),
           ...(i === 0 && entry.author === "bot" && { sources: result.sources }),
         }));
         setMessages([...before, { role: "user", content: text, clientMessageId }, ...replies]);
@@ -62,7 +124,10 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
       } else if ("missing" in result && result.missing) {
         setBlocked(result.missing);
       } else {
-        if (result.conversationId) setConversationId(result.conversationId);
+        if (result.conversationId) {
+          setConversationId(result.conversationId);
+          remember(result.conversationId);
+        }
         setMessages([...before, { role: "user", content: text, failed: result.error, clientMessageId }]);
       }
     });
@@ -76,7 +141,10 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
   }
 
   function newConversation() {
+    remember(undefined);
     setConversationId(undefined);
+    setMode("ia");
+    lastSeq.current = 0;
     setMessages([]);
     setOpenSources(new Set());
     setDraft("");
@@ -95,7 +163,7 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
       <header className={c.header}>
         <div className={c.titles}>
           <h1>Probar tu chatbot</h1>
-          <p className={c.subtitle}>Escríbele como lo haría un cliente. Esta conversación se guarda para mejorar la atención.</p>
+          <p className={c.subtitle}>Escríbele como lo haría un cliente.</p>
         </div>
         {!blocked && messages.length > 0 && (
           <button type="button" className={`${c.secondary} ${s.newButton}`} onClick={newConversation} disabled={sending}>
@@ -114,6 +182,11 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
       )}
 
       <section className={s.card}>
+        {!blocked && (
+          <p className={s.privacy}>
+            <LockSmall /> Esta conversación se guarda para mejorar la atención.
+          </p>
+        )}
         <div className={s.thread} aria-live="polite">
           {blocked ? (
             <div className={s.center}>
@@ -128,7 +201,7 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
             <div className={s.center}>
               <span className={s.bigIcon}><ChatIcon /></span>
               <h2>¿Qué le preguntaría un cliente?</h2>
-              <p>Por ejemplo: «¿A qué hora abren el sábado?». El bot responde solo con lo que sabe; si no lo sabe, dice que va a consultar.</p>
+              <p>Por ejemplo: «¿A qué hora abren el sábado?». El bot responde solo con lo que sabe; si no lo sabe, pasa la conversación al equipo.</p>
             </div>
           ) : (
             messages.map((message, index) =>
@@ -142,7 +215,11 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
                         {index === messages.length - 1 && !sending && (
                           <>
                             {" · "}
-                            <button type="button" className={s.retry} onClick={() => send(message.content, messages.slice(0, index), message.clientMessageId)}>
+                            <button
+                              type="button"
+                              className={s.retry}
+                              onClick={() => send(message.content, messages.slice(0, index), message.clientMessageId)}
+                            >
                               Reintentar
                             </button>
                           </>
@@ -151,6 +228,15 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
                       <div className={`${c.notice} ${s.error}`} role="alert">{message.failed}</div>
                     </>
                   )}
+                </div>
+              ) : message.author === "equipo" ? (
+                <div key={index} className={s.botTurn}>
+                  <div className={s.team}>
+                    <span className={s.teamLabel}>
+                      <i className={s.teamDot} /> Equipo de {companyName}
+                    </span>
+                    {message.content}
+                  </div>
                 </div>
               ) : (
                 <div key={index} className={s.botTurn}>
@@ -182,7 +268,9 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
                           ))}
                         </>
                       ) : (
-                        <span className={c.help}>No encontró nada relacionado en lo que sabe. Por eso respondió que va a consultar.</span>
+                        <span className={c.help}>
+                          No encontró nada relacionado en lo que sabe, o la respuesta se recuperó al volver a abrir la conversación.
+                        </span>
                       )}
                     </div>
                   )}
@@ -199,6 +287,12 @@ export function ChatView({ ready, missing }: { ready: boolean; missing: string[]
           )}
           <div ref={endRef} />
         </div>
+
+        {mode === "humano" && !blocked && (
+          <p className={s.waiting} role="status">
+            <ClockIcon /> Una persona del equipo va a continuar esta conversación. Puedes seguir escribiendo.
+          </p>
+        )}
 
         <form
           className={s.composer}
@@ -286,5 +380,19 @@ const LockIcon = () => (
   <svg {...icon} width={26} height={26} strokeWidth={1.3}>
     <rect x="3.25" y="7" width="9.5" height="6.5" rx="1.5" />
     <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
+  </svg>
+);
+
+const LockSmall = () => (
+  <svg {...icon} width={13} height={13} strokeWidth={1.4}>
+    <rect x="3.25" y="7" width="9.5" height="6.5" rx="1.5" />
+    <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
+  </svg>
+);
+
+const ClockIcon = () => (
+  <svg {...icon} width={14} height={14} strokeWidth={1.4} strokeLinecap="round">
+    <circle cx="8" cy="8" r="5.75" />
+    <path d="M8 5v3.2l2 1.2" />
   </svg>
 );

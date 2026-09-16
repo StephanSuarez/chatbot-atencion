@@ -10,7 +10,7 @@ export default async function Page() {
   return (
     <>
       <Tabs active="probar" />
-      <ChatView ready={config.complete} missing={config.missing} />
+      <ChatView ready={config.complete} missing={config.missing} companyName={config.companyName} />
     </>
   );
 }

@@ -362,3 +362,67 @@
     min-height: 44px;
   }
 }
+
+/* Aviso de guardado (FR-004) y espera de una persona (004). */
+.privacy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 20px 0;
+  font-size: 12.5px;
+  color: #6f655c;
+}
+
+.waiting {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 20px 4px;
+  padding: 10px 13px;
+  border-radius: 12px;
+  background: #fbf3dc;
+  color: #7a5a12;
+  font-size: 13px;
+}
+
+/* Mensaje escrito por una persona del equipo: distinto del bot, con su etiqueta. */
+.team {
+  padding: 12px 16px;
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  background: #eaf1f6;
+  border: 1px solid #cfdde8;
+  color: #221c17;
+  border-radius: 16px 16px 16px 4px;
+}
+
+.teamLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #1f4d6b;
+}
+
+.teamDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #1f4d6b;
+}
+
+@media (max-width: 900px) {
+  .privacy {
+    padding: 10px 16px 0;
+  }
+
+  .waiting {
+    margin: 0 16px 4px;
+  }
+}
