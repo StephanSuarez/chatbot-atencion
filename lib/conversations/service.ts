@@ -60,12 +60,19 @@ export async function getConversation(id: unknown) {
 }
 
 // El id del mensaje lo genera el navegador: reintentar el mismo mensaje no lo duplica.
-export async function saveClientMessage(input: { conversationId?: unknown; clientMessageId: string; text: string }) {
+export async function saveClientMessage(input: {
+  conversationId?: unknown;
+  clientMessageId: string;
+  text: string;
+  origin?: Origin;
+}) {
   return db.transaction(async (tx) => {
     const existing = isUuid(input.conversationId)
       ? (await tx.select({ id: conversations.id }).from(conversations).where(eq(conversations.id, input.conversationId)))[0]
       : undefined;
-    const created = existing ? undefined : (await tx.insert(conversations).values({ origin: "chat_de_prueba" }).returning())[0];
+    const created = existing
+      ? undefined
+      : (await tx.insert(conversations).values({ origin: input.origin ?? "chat_de_prueba" }).returning())[0];
     const conversationId = existing?.id ?? created!.id;
 
     const [inserted] = await tx

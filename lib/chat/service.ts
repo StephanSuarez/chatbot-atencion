@@ -30,6 +30,8 @@ export async function sendMessage(input: {
   conversationId?: unknown;
   clientMessageId?: unknown;
   message?: unknown;
+  // Las simulaciones (009) crean sus conversaciones con su propio origen.
+  origin?: "chat_de_prueba" | "simulacion";
 }): Promise<SendResult> {
   const message = typeof input.message === "string" ? input.message.trim() : "";
   if (!message) return { ok: false, error: "Escribe un mensaje." };
@@ -43,7 +45,12 @@ export async function sendMessage(input: {
     return { ok: false, error: "Tu chatbot todavía no está listo para conversar.", missing: config.missing };
   }
 
-  const saved = await saveClientMessage({ conversationId: input.conversationId, clientMessageId, text: message });
+  const saved = await saveClientMessage({
+    conversationId: input.conversationId,
+    clientMessageId,
+    text: message,
+    origin: input.origin,
+  });
   const { conversationId, seq } = saved;
   const conversation = await getConversation(conversationId);
   if (!conversation || conversation.mode === "humano") return answer(conversationId, seq, conversation?.mode ?? "ia");
