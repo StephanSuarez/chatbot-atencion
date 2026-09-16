@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { getConfig } from "../../lib/config-service";
 import { countPending, listConversations, type TypeFilter } from "../../lib/conversations/service";
 import { Tabs } from "../tabs";
 import { ConversationsView } from "./list-view";
@@ -21,15 +22,16 @@ export default async function Page({ searchParams }: Props) {
   const from = one(params.desde);
   const to = one(params.hasta);
 
-  const [conversations, pending] = await Promise.all([
+  const [conversations, pending, config] = await Promise.all([
     listConversations({ type, ...rangeOf(preset, from, to) }),
     countPending(),
+    getConfig(),
   ]);
 
   return (
     <>
       <Tabs active="conversaciones" pending={pending} />
-      <ConversationsView conversations={conversations} filters={{ type, preset, from, to }} />
+      <ConversationsView conversations={conversations} filters={{ type, preset, from, to }} companyName={config.companyName} />
     </>
   );
 }

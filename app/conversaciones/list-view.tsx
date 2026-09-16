@@ -7,6 +7,7 @@ import { call } from "../call";
 import c from "../config.module.css";
 import { deleteConversationAction } from "./actions";
 import s from "./conversaciones.module.css";
+import { Detail } from "./detail";
 import { PRESET_LABEL, type Preset } from "./range";
 
 interface Filters {
@@ -19,6 +20,7 @@ interface Filters {
 interface Props {
   conversations: ConversationSummary[];
   filters: Filters;
+  companyName: string;
 }
 
 const TYPE_LABEL: Record<TypeFilter, string> = {
@@ -30,9 +32,10 @@ const TYPE_LABEL: Record<TypeFilter, string> = {
 const PRESETS: Preset[] = ["siempre", "hoy", "ayer", "7dias", "30dias", "personalizada"];
 const when = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
-export function ConversationsView({ conversations, filters }: Props) {
+export function ConversationsView({ conversations, filters, companyName }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string>();
   const [confirm, setConfirm] = useState<ConversationSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [working, startWorking] = useTransition();
@@ -66,7 +69,10 @@ export function ConversationsView({ conversations, filters }: Props) {
       });
       setConfirm(null);
       if (!result.ok) setError(result.error ?? "No se pudo borrar.");
-      else router.refresh();
+      else {
+        if (conversation.id === selected) setSelected(undefined);
+        router.refresh();
+      }
     });
   }
 
@@ -86,115 +92,137 @@ export function ConversationsView({ conversations, filters }: Props) {
       )}
 
       <section className={s.panelWrap}>
-        <div className={s.filters}>
-          <label className={c.srOnly} htmlFor="tipo">Tipo de conversación</label>
-          <select
-            id="tipo"
-            className={s.select}
-            value={filters.type}
-            onChange={(e) => apply({ type: e.target.value as TypeFilter })}
-          >
-            {(Object.keys(TYPE_LABEL) as TypeFilter[]).map((type) => (
-              <option key={type} value={type}>{TYPE_LABEL[type]}</option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className={dateFilterOn ? `${s.more} ${s.moreOn}` : s.more}
-            aria-expanded={open}
-            onClick={() => setOpen(!open)}
-          >
-            <FiltersIcon /> Filtros
-          </button>
-        </div>
+        <div className={s.split}>
+          <div className={selected ? `${s.listSide} ${s.hideOnMobile}` : s.listSide}>
+            <div className={s.filters}>
+              <label className={c.srOnly} htmlFor="tipo">Tipo de conversación</label>
+              <select
+                id="tipo"
+                className={s.select}
+                value={filters.type}
+                onChange={(e) => apply({ type: e.target.value as TypeFilter })}
+              >
+                {(Object.keys(TYPE_LABEL) as TypeFilter[]).map((type) => (
+                  <option key={type} value={type}>{TYPE_LABEL[type]}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className={dateFilterOn ? `${s.more} ${s.moreOn}` : s.more}
+                aria-expanded={open}
+                onClick={() => setOpen(!open)}
+              >
+                <FiltersIcon /> Filtros
+              </button>
+            </div>
 
-        {open && (
-          <div className={s.panel}>
-            <div className={s.panelHead}>
-              <span>Fecha del último mensaje</span>
-              {dateFilterOn && (
-                <button type="button" className={s.clear} onClick={() => apply({ preset: "siempre" })}>
-                  Limpiar
-                </button>
-              )}
-            </div>
-            <div className={s.chips}>
-              {PRESETS.filter((preset) => preset !== "siempre").map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  className={filters.preset === preset ? `${s.chip} ${s.chipOn}` : s.chip}
-                  aria-pressed={filters.preset === preset}
-                  onClick={() => apply({ preset })}
-                >
-                  {PRESET_LABEL[preset]}
-                </button>
-              ))}
-            </div>
-            {filters.preset === "personalizada" && (
-              <div className={s.range}>
-                <label className={s.rangeField}>
-                  <span>Desde</span>
-                  <input type="date" className={s.date} value={filters.from} onChange={(e) => apply({ from: e.target.value })} />
-                </label>
-                <label className={s.rangeField}>
-                  <span>Hasta</span>
-                  <input type="date" className={s.date} value={filters.to} onChange={(e) => apply({ to: e.target.value })} />
-                </label>
+            {open && (
+              <div className={s.panel}>
+                <div className={s.panelHead}>
+                  <span>Fecha del último mensaje</span>
+                  {dateFilterOn && (
+                    <button type="button" className={s.clear} onClick={() => apply({ preset: "siempre" })}>
+                      Limpiar
+                    </button>
+                  )}
+                </div>
+                <div className={s.chips}>
+                  {PRESETS.filter((preset) => preset !== "siempre").map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className={filters.preset === preset ? `${s.chip} ${s.chipOn}` : s.chip}
+                      aria-pressed={filters.preset === preset}
+                      onClick={() => apply({ preset })}
+                    >
+                      {PRESET_LABEL[preset]}
+                    </button>
+                  ))}
+                </div>
+                {filters.preset === "personalizada" && (
+                  <div className={s.range}>
+                    <label className={s.rangeField}>
+                      <span>Desde</span>
+                      <input type="date" className={s.date} value={filters.from} onChange={(e) => apply({ from: e.target.value })} />
+                    </label>
+                    <label className={s.rangeField}>
+                      <span>Hasta</span>
+                      <input type="date" className={s.date} value={filters.to} onChange={(e) => apply({ to: e.target.value })} />
+                    </label>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {conversations.length === 0 ? (
-          <div className={s.empty}>
-            <span className={s.bigIcon}><ChatIcon /></span>
-            {filters.type === "todas" && !dateFilterOn ? (
-              <>
-                <h2>Aún no hay conversaciones</h2>
-                <p>Cuando alguien escriba en «Probar», la conversación aparecerá aquí.</p>
-              </>
+            {conversations.length === 0 ? (
+              <div className={s.empty}>
+                <span className={s.bigIcon}><ChatIcon /></span>
+                {filters.type === "todas" && !dateFilterOn ? (
+                  <>
+                    <h2>Aún no hay conversaciones</h2>
+                    <p>Cuando alguien escriba en «Probar», la conversación aparecerá aquí.</p>
+                  </>
+                ) : (
+                  <>
+                    <h2>Ninguna conversación con esos filtros</h2>
+                    <p>Prueba con otro rango de fechas o con otro tipo.</p>
+                  </>
+                )}
+              </div>
             ) : (
-              <>
-                <h2>Ninguna conversación con esos filtros</h2>
-                <p>Prueba con otro rango de fechas o con otro tipo.</p>
-              </>
+              <ul className={s.rows}>
+                {conversations.map((conversation) => (
+                  <li key={conversation.id} className={conversation.id === selected ? `${s.row} ${s.rowOn}` : s.row}>
+                    <button type="button" className={s.rowButton} onClick={() => setSelected(conversation.id)}>
+                      <div className={s.rowTop}>
+                        <span className={s.rowTitle}>Conversación del {when.format(conversation.lastMessageAt)}</span>
+                        <div className={s.rowTags}>
+                          {conversation.pending && <span className={s.tagPend}>Pendiente</span>}
+                          {conversation.derived && <span className={s.tagDer}>Derivada</span>}
+                          <span className={conversation.mode === "ia" ? s.tagIa : s.tagHuman}>
+                            {conversation.mode === "ia" ? "Responde la IA" : "Respondes tú"}
+                          </span>
+                        </div>
+                      </div>
+                      <span className={s.rowMeta}>Chat de prueba</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={s.trash}
+                      aria-label={`Borrar la conversación del ${when.format(conversation.lastMessageAt)}`}
+                      disabled={conversation.pending || working}
+                      title={conversation.pending ? "Primero respóndela: espera a una persona" : "Borrar conversación"}
+                      onClick={() => {
+                        setError(null);
+                        setConfirm(conversation);
+                      }}
+                    >
+                      <TrashIcon />
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
-        ) : (
-          <ul className={s.rows}>
-            {conversations.map((conversation) => (
-              <li key={conversation.id} className={s.row}>
-                <div className={s.rowMain}>
-                  <div className={s.rowTop}>
-                    <span className={s.rowTitle}>Conversación del {when.format(conversation.lastMessageAt)}</span>
-                    <div className={s.rowTags}>
-                      {conversation.pending && <span className={s.tagPend}>Pendiente</span>}
-                      {conversation.derived && <span className={s.tagDer}>Derivada</span>}
-                      <span className={conversation.mode === "ia" ? s.tagIa : s.tagHuman}>
-                        {conversation.mode === "ia" ? "Responde la IA" : "Respondes tú"}
-                      </span>
-                    </div>
-                  </div>
-                  <span className={s.rowMeta}>Chat de prueba</span>
-                </div>
-                <button
-                  type="button"
-                  className={s.trash}
-                  aria-label={`Borrar la conversación del ${when.format(conversation.lastMessageAt)}`}
-                  disabled={conversation.pending || working}
-                  title={conversation.pending ? "Primero respóndela: espera a una persona" : "Borrar conversación"}
-                  onClick={() => {
-                    setError(null);
-                    setConfirm(conversation);
-                  }}
-                >
-                  <TrashIcon />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+
+          <div className={selected ? s.detail : `${s.detail} ${s.hideOnMobile}`}>
+            {selected ? (
+              <Detail
+                key={selected}
+                id={selected}
+                companyName={companyName}
+                onBack={() => setSelected(undefined)}
+                onGone={() => {
+                  setSelected(undefined);
+                  router.refresh();
+                }}
+                onChanged={() => router.refresh()}
+              />
+            ) : (
+              <p className={s.pickOne}>Elige una conversación para leerla y responder.</p>
+            )}
+          </div>
+        </div>
       </section>
 
       <dialog ref={confirmRef} className={c.dialog} onClose={() => setConfirm(null)}>
