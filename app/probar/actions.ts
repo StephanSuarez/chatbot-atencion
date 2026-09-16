@@ -1,7 +1,7 @@
 "use server";
 
-import { getEntries, type Entry } from "../../lib/conversations/service";
 import { sendMessage, type SendResult } from "../../lib/chat/service";
+import { getConversation, getEntries, type Entry, type Mode } from "../../lib/conversations/service";
 
 // Sin login (principio 11): cualquiera puede llamarlas con un POST. Los servicios validan todo lo que llega.
 export async function sendMessageAction(input: {
@@ -17,8 +17,17 @@ export async function sendMessageAction(input: {
   }
 }
 
-// Mensajes nuevos del equipo, sin recargar (plan 004 §3). Devuelve null si la conversación ya no existe.
-export async function newEntriesAction(conversationId: unknown, after: unknown): Promise<Entry[] | null> {
+// Mensajes nuevos del equipo, sin recargar (plan 004 §3). El modo viene también, para saber si se espera a
+// una persona al recuperar la conversación. Devuelve null si la conversación ya no existe.
+export async function newEntriesAction(
+  conversationId: unknown,
+  after: unknown,
+): Promise<{ entries: Entry[]; mode: Mode } | null> {
   const since = typeof after === "number" && Number.isFinite(after) ? after : 0;
-  return getEntries(conversationId, { after: since, forClient: true });
+  const [entries, conversation] = await Promise.all([
+    getEntries(conversationId, { after: since, forClient: true }),
+    getConversation(conversationId),
+  ]);
+  if (!entries || !conversation) return null;
+  return { entries, mode: conversation.mode };
 }
