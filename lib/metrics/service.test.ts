@@ -68,12 +68,12 @@ describe("motivos de derivación (FR-007)", () => {
     const sinMotivo = await conversation("pregunta antigua", { reason: "no_sabe" });
     await sql`update conversations set handoff_reason = null where id = ${sinMotivo}`;
 
-    expect(await handoffReasons()).toEqual({ no_sabe: 2, enojo: 1, pide_persona: 1, sin_registrar: 1 });
+    expect(await handoffReasons()).toEqual({ no_sabe: 2, enojo: 1, pide_persona: 1, adjunto: 0, sin_registrar: 1 });
   });
 
   it("las conversaciones que no derivaron no entran en el desglose", async () => {
     await conversation("¿A qué hora abren?");
-    expect(await handoffReasons()).toEqual({ no_sabe: 0, enojo: 0, pide_persona: 0, sin_registrar: 0 });
+    expect(await handoffReasons()).toEqual({ no_sabe: 0, enojo: 0, pide_persona: 0, adjunto: 0, sin_registrar: 0 });
   });
 });
 

@@ -146,7 +146,9 @@ export async function saveBotTurn(
     entries: { author: "bot" | "nota" | "evento"; text: string }[];
     toHuman?: boolean;
     personRequests?: number;
-    handoffReason?: "no_sabe" | "enojo" | "pide_persona";
+    // «adjunto» solo lo decide el código al recibir un archivo (010): no está entre los motivos que el
+    // modelo puede pedir con la herramienta de derivar.
+    handoffReason?: "no_sabe" | "enojo" | "pide_persona" | "adjunto";
   },
 ): Promise<boolean> {
   return db.transaction(async (tx) => {

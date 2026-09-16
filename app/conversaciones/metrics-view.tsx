@@ -18,6 +18,7 @@ const REASON_LABEL: Record<keyof ReasonBreakdown, string> = {
   no_sabe: "No tenía la información",
   enojo: "Cliente enojado",
   pide_persona: "Pidió hablar con una persona",
+  adjunto: "Recibió un archivo",
   sin_registrar: "Sin motivo registrado",
 };
 
