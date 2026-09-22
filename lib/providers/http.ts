@@ -6,6 +6,8 @@ export class ProviderError extends Error {
   constructor(
     readonly provider: string,
     readonly kind: ProviderErrorKind,
+    // Qué modelo falló, para nombrarlo en el mensaje. Lo etiqueta quien hizo la llamada (011).
+    readonly model?: string,
   ) {
     super(`${provider}: ${kind}`);
   }
