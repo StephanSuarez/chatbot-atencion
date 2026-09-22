@@ -1,0 +1,48 @@
+{
+  "label": "despues",
+  "when": "2026-09-22T19:13:18.378Z",
+  "results": [
+    {
+      "question": "¿A qué hora abren los sábados?",
+      "decision": "responde",
+      "answer": "¡Hola! Soy el asistente de Cafe Aurora. Los sábados abrimos a las 8:00.",
+      "ms": 94068,
+      "conversationId": "2a50d751-b54b-4318-91ef-80e1c0c55953"
+    },
+    {
+      "question": "¿Hacen domicilios? ¿Cuál es el pedido mínimo?",
+      "decision": "responde",
+      "answer": "¡Hola! Soy el asistente de Cafe Aurora. Sí, hacemos domicilios. El pedido mínimo es de 20.000 pesos.",
+      "ms": 83954,
+      "conversationId": "d07fe79b-7b7d-42b5-91a3-f21a8a5022a6"
+    },
+    {
+      "question": "¿Aceptan pago con Nequi?",
+      "decision": "responde",
+      "answer": "Sí, aceptamos pagos con Nequi. También recibimos efectivo, tarjetas débito y crédito (Visa y Mastercard), y Daviplata.",
+      "ms": 4685,
+      "conversationId": "875fccb6-7c2c-46f6-8d36-f8589a7d36cf"
+    },
+    {
+      "question": "¿Tienen leche de almendras para el café?",
+      "decision": "responde",
+      "answer": "Sí, tenemos leche de almendras para el café, con un recargo de 1.500 pesos.",
+      "ms": 29461,
+      "conversationId": "26d981d0-faed-49fd-aaac-8659c411494f"
+    },
+    {
+      "question": "Esto es un desastre, llevo una hora esperando mi pedido y nadie me responde. ¡Pésimo servicio!",
+      "decision": "deriva (enojo)",
+      "answer": "Lamentamos mucho la demora y la falta de respuesta. Estamos transfiriendo su caso a un agente que podrá ayudarle.",
+      "ms": 9499,
+      "conversationId": "9a713884-fb91-4f3b-b710-0f4458640951"
+    },
+    {
+      "question": "Quiero hablar con una persona, por favor.",
+      "decision": "responde",
+      "answer": "Con gusto te ayudo yo. ¿Qué necesitas? Si prefieres hablar con una persona, vuelve a pedírmelo y te paso con el equipo.",
+      "ms": 7072,
+      "conversationId": "79e8b438-0584-413d-aba4-84b299a72b8c"
+    }
+  ]
+}

@@ -32,6 +32,8 @@ Estado actual: 001, 002 y 003 terminadas; 004, 005, 006, 008, 009 y 010 implemen
 
 Objetivo: aprender LangGraph sobre el chatbot que ya funciona, reescribiendo el motor conversacional como un grafo **sin cambiar el comportamiento** del bot.
 
+Estado actual: 011 terminada y desplegada (2026-09-22); 012 pendiente de decisión.
+
 Reglas de la iniciativa:
 
 - Las specs 003, 004 y 006 siguen siendo la fuente de verdad del comportamiento. La 011 no las modifica.
@@ -40,7 +42,7 @@ Reglas de la iniciativa:
 
 | ID  | Feature | Objetivo | Depende de | Estado |
 |-----|---------|----------|------------|--------|
-| 011 | Motor conversacional con LangGraph | Reescribir el turno del bot (búsqueda, LLM, herramientas, derivación, agendamiento) como un grafo de LangGraph: estado tipado, nodos y edges, checkpoint por nodo persistido en la base. Mismas respuestas, mismas reglas, mismos tests | 003, 004, 006 | En curso (Jira KAN-65) |
+| 011 | Motor conversacional con LangGraph | Reescribir el turno del bot (búsqueda, LLM, herramientas, derivación, agendamiento) como un grafo de LangGraph: estado tipado, nodos y edges, checkpoint por nodo persistido en la base. Mismas respuestas, mismas reglas, mismos tests | 003, 004, 006 | Terminada (Jira KAN-65, 2026-09-22); comparación antes/después en `scripts/comparacion-011.md` |
 | 012 | Aprobación humana antes de agendar | Pausar el grafo antes de `agendar_cita`, que una persona apruebe o rechace desde Conversaciones y retomar la misma corrida (human-in-the-loop con `interrupt`). Es la única feature de la etapa que cambia el comportamiento | 011 | Futuro, sin aprobar |
 
 ### Notas de alcance
