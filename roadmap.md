@@ -1,10 +1,12 @@
 # Roadmap — Chatbot
 
-Estado: **Aprobado** por el usuario el 2026-09-13. Modificado y reaprobado el 2026-09-13 (un solo chatbot; proveedor de LLM en 001).
-
-Estado actual: 001, 002 y 003 terminadas; 004, 005, 006, 008, 009 y 010 implementadas (Jira KAN-25, KAN-35, KAN-41, KAN-48, KAN-51 y KAN-55), pendientes de validación del usuario. La 006 además necesita credenciales de Google para conectarse de verdad. Solo queda pendiente la 007 (WhatsApp), que necesita las credenciales de Meta.
+Estado: **Aprobado** por el usuario el 2026-09-13. Modificado y reaprobado el 2026-09-13 (un solo chatbot; proveedor de LLM en 001). Segunda iniciativa **aprobada por el usuario el 2026-09-22**.
 
 Objetivo: una plataforma con un único chatbot para una única empresa, que cualquiera configura con la información de la empresa, lo prueba en un chat dentro de la app, deriva a humano cuando corresponde, agenda citas y, por último, atiende por WhatsApp.
+
+## Primera versión (2026-09-13 → 2026-09-16)
+
+Estado actual: 001, 002 y 003 terminadas; 004, 005, 006, 008, 009 y 010 implementadas (Jira KAN-25, KAN-35, KAN-41, KAN-48, KAN-51 y KAN-55), pendientes de validación del usuario. La 006 además necesita credenciales de Google para conectarse de verdad. Solo queda pendiente la 007 (WhatsApp), que necesita las credenciales de Meta.
 
 | ID  | Feature | Objetivo | Depende de | Estado |
 |-----|---------|----------|------------|--------|
@@ -19,10 +21,30 @@ Objetivo: una plataforma con un único chatbot para una única empresa, que cual
 | 009 | Simulaciones del chatbot | Correr conversaciones simuladas para evaluar al bot; se guardan con origen «Simulación» | 004 | Implementada (Jira KAN-51, 2026-09-15); pendiente de validación del usuario, incluida una corrida real (consume saldo de la API key) |
 | 010 | Mensajes multimedia | Audios, imágenes y documentos en las conversaciones, como en WhatsApp | 004 | Implementada (Jira KAN-55, 2026-09-16); validada con 34 de 34 comprobaciones (`scripts/validacion-010.md`), pendiente de validación del usuario |
 
-## Notas de alcance
+### Notas de alcance
 
 - **Fuera de alcance:** multiempresa (varias configuraciones o chatbots), login y cuentas, tomar pedidos, cobrar, integraciones con sistemas de la empresa (salvo el proveedor de LLM, Google para agendamiento y Meta para WhatsApp).
-- **Capacidades futuras:** ninguna por ahora.
 - **005** podría fusionarse con 004 si al especificarlas resultan inseparables.
 - **010** conviene hacerla antes o junto con la 007, porque por WhatsApp los clientes mandan audios e imágenes.
 - **007** depende de 004 y 006 solo porque WhatsApp debe soportar derivación y agendamiento; si se quiere antes, se puede especificar sin ellas.
+
+## Segunda iniciativa: motor con LangGraph (aprobada 2026-09-22)
+
+Objetivo: aprender LangGraph sobre el chatbot que ya funciona, reescribiendo el motor conversacional como un grafo **sin cambiar el comportamiento** del bot.
+
+Reglas de la iniciativa:
+
+- Las specs 003, 004 y 006 siguen siendo la fuente de verdad del comportamiento. La 011 no las modifica.
+- El arnés de regresión son los tests actuales y las simulaciones (009): deben dar los mismos resultados antes y después.
+- Una feature técnica lleva una spec corta (qué se conserva y cómo se comprueba) y un plan con las decisiones de arquitectura.
+
+| ID  | Feature | Objetivo | Depende de | Estado |
+|-----|---------|----------|------------|--------|
+| 011 | Motor conversacional con LangGraph | Reescribir el turno del bot (búsqueda, LLM, herramientas, derivación, agendamiento) como un grafo de LangGraph: estado tipado, nodos y edges, checkpoint por nodo persistido en la base. Mismas respuestas, mismas reglas, mismos tests | 003, 004, 006 | En curso (Jira KAN-65) |
+| 012 | Aprobación humana antes de agendar | Pausar el grafo antes de `agendar_cita`, que una persona apruebe o rechace desde Conversaciones y retomar la misma corrida (human-in-the-loop con `interrupt`). Es la única feature de la etapa que cambia el comportamiento | 011 | Futuro, sin aprobar |
+
+### Notas de alcance
+
+- **012** se decide después de la 011: es donde se aprende human-in-the-loop con pausa y reanudación, y por eso sí cambia comportamiento (hoy la derivación cede el turno; una persona devuelve la conversación al bot a mano).
+- **Dependencia nueva:** `@langchain/langgraph`, el primer SDK de IA del proyecto. El plan fija la versión y anota la decisión.
+- **Capacidades futuras:** MCP en una etapa posterior (un servidor MCP del chatbot con sus herramientas, con token, y el grafo consumiéndolas como cliente). 007 (WhatsApp) sigue en espera de credenciales de Meta.
