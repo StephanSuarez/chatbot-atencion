@@ -411,3 +411,26 @@ describe("adjuntos (010)", () => {
     expect(chat).not.toHaveBeenCalled();
   });
 });
+
+describe("checkpoints del turno (011)", () => {
+  const threads = async () => (await sql`select count(distinct thread_id)::int as n from graph_checkpoints`)[0].n as number;
+
+  it("un turno terminado no deja checkpoints; uno fallido los conserva hasta que el reintento lo completa (FR-003, FR-004)", async () => {
+    // Otros tests dejan turnos fallidos a propósito y nunca los reintentan.
+    await sql`delete from graph_checkpoint_writes`;
+    await sql`delete from graph_checkpoints`;
+    ok(await send("hola"));
+    expect(await threads()).toBe(0);
+
+    const clientMessageId = randomUUID();
+    chat.mockRejectedValueOnce(new ProviderError("fake", "timeout"));
+    const failed = await sendMessage({ clientMessageId, message: "¿a qué hora abren?" });
+    if (failed.ok) throw new Error("debía fallar");
+    expect(await threads()).toBe(1);
+
+    ok(await sendMessage({ conversationId: failed.conversationId, clientMessageId, message: "¿a qué hora abren?" }));
+    expect(await threads()).toBe(0);
+    // El reintento reanudó desde el modelo: la búsqueda no se repitió.
+    expect(findRelated).toHaveBeenCalledTimes(2);
+  });
+});
