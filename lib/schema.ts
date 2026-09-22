@@ -8,6 +8,7 @@ import {
   index,
   integer,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -231,3 +232,37 @@ export const simulationResults = pgTable("simulation_results", {
   conversationId: uuid("conversation_id").references(() => conversations.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }).enableRLS();
+
+// Checkpoints de LangGraph (011): el estado del turno del bot después de cada nodo. Un hilo por mensaje del
+// cliente, que se borra al terminar el turno (plan 011 §5). Los bytes son del serializador de LangGraph.
+export const graphCheckpoints = pgTable(
+  "graph_checkpoints",
+  {
+    threadId: text("thread_id").notNull(),
+    checkpointNs: text("checkpoint_ns").notNull().default(""),
+    checkpointId: text("checkpoint_id").notNull(),
+    parentCheckpointId: text("parent_checkpoint_id"),
+    type: text("type").notNull(),
+    checkpoint: bytea("checkpoint").notNull(),
+    metadataType: text("metadata_type").notNull(),
+    metadata: bytea("metadata").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.threadId, t.checkpointNs, t.checkpointId] })],
+).enableRLS();
+
+// Escrituras pendientes de un checkpoint: lo que un nodo ya produjo cuando otro falló en el mismo paso.
+export const graphCheckpointWrites = pgTable(
+  "graph_checkpoint_writes",
+  {
+    threadId: text("thread_id").notNull(),
+    checkpointNs: text("checkpoint_ns").notNull().default(""),
+    checkpointId: text("checkpoint_id").notNull(),
+    taskId: text("task_id").notNull(),
+    idx: integer("idx").notNull(),
+    channel: text("channel").notNull(),
+    type: text("type").notNull(),
+    value: bytea("value").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.threadId, t.checkpointNs, t.checkpointId, t.taskId, t.idx] })],
+).enableRLS();
