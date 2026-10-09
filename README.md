@@ -17,6 +17,9 @@ npm run dev                          # http://localhost:3000
 
 La app no arranca si falta `DATABASE_URL` o si `ENCRYPTION_KEY` no es de 32 bytes en base64.
 
+Si el puerto 5432 ya está ocupado por otro PostgreSQL, cambia el puerto en `docker-compose.yml`
+(por ejemplo `"55432:5432"`) y ajusta el puerto en `DATABASE_URL`.
+
 Para que el chatbot responda hay que cargar un proveedor (OpenAI u OpenRouter), un modelo y una API key en la
 pantalla «Tu chatbot». Eso se guarda cifrado en la base, no en `.env.local`. Sin eso la plataforma funciona, pero el
 chat no contesta.
