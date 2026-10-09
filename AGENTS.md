@@ -7,3 +7,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# Este proyecto
+
+Para montarlo y validarlo, sigue el `README.md`: requisitos, base en Docker, migraciones y comandos de verificación.
+Qué construye y por qué: `constitution.md`, `roadmap.md` y `specs/NNN-*/`. Las reglas del producto (el bot no inventa,
+deriva a humano, solo informa y agenda) están en la constitución y se respetan aunque el prompt diga otra cosa.

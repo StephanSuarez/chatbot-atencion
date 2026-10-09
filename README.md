@@ -4,15 +4,24 @@ Plataforma con un único chatbot configurable. Contexto: `constitution.md`, `roa
 
 ## Desarrollo local
 
+Requisitos: **Node 22.9 o superior** (`npm run db:migrate` usa `--env-file-if-exists`, que existe desde esa versión) y
+**Docker**, para la base de datos.
+
 ```bash
 npm install
 docker compose up -d                 # PostgreSQL 17 en localhost:5432
 cp .env.example .env.local           # y completar ENCRYPTION_KEY con: openssl rand -base64 32
 npm run db:migrate                   # aplica las migraciones de ./drizzle
-npm run dev
+npm run dev                          # http://localhost:3000
 ```
 
 La app no arranca si falta `DATABASE_URL` o si `ENCRYPTION_KEY` no es de 32 bytes en base64.
+
+Para que el chatbot responda hay que cargar un proveedor (OpenAI u OpenRouter), un modelo y una API key en la
+pantalla «Tu chatbot». Eso se guarda cifrado en la base, no en `.env.local`. Sin eso la plataforma funciona, pero el
+chat no contesta.
+
+Variable opcional: `AGENDA_TIME_ZONE` es la zona horaria de las citas (006). Por defecto, `America/Bogota`.
 
 ### Agendamiento con Google (opcional, feature 006)
 
@@ -45,3 +54,9 @@ renombre columnas se hace en dos despliegues.
 - `npm test` — Vitest (unitarios e integración; requiere la base levantada)
 - `npm run lint`, `npm run typecheck`, `npm run build`
 - `npm run db:generate` — genera una migración a partir de `lib/schema.ts`
+
+Para comprobar que quedó bien montado, con la base levantada:
+
+```bash
+npm test && npm run lint && npm run typecheck && npm run build
+```
